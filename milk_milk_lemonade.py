@@ -138,6 +138,6 @@ if __name__ == '__main__':
         swarm.parallel_safe(take_off)
         swarm.parallel_safe(run_square_sequence)
         "complex manouvre"
-        #swarm.parallel_safe(run_sequence, args_dict=seq_args)
+        swarm.parallel_safe(run_sequence, args_dict=seq_args)
         swarm.parallel_safe(land)
 
