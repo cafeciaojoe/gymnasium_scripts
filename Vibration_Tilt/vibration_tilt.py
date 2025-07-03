@@ -1,4 +1,5 @@
 import time
+import threading
 
 import matplotlib.pyplot as plt
 
@@ -9,7 +10,7 @@ from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
-URI = uri_helper.uri_from_env(default='radio://0/80/2M/a0a0a0a0aa')
+URI = uri_helper.uri_from_env(default='radio://0/30/2M/a0a0a0a0aa')
 
 # Crazyflie's attitude
 roll = [0]
@@ -18,10 +19,10 @@ pitch = [0]
 start_roll = 0
 start_pitch = 0 
 
-min_power = 1000  # Minimum motor power
-max_power = 30000  # Maximum motor power
+min_power = 7000  # Minimum motor power
+max_power = 45000  # Maximum motor power
 min_angle = 0   # The Crazyflie hovers while: min_angle < roll,pitch < max_angle
-max_angle = 30
+max_angle = 45
 
 
 def attitude_callback(timestamp, data, logconf):
@@ -41,7 +42,9 @@ def power_profile(angle):
     if abs(angle) > max_angle:
         power = int(max_power)
     else:
-        power = int((min_power*max_angle + (max_power-min_power)*abs(angle))/(max_angle-min_angle))
+        #power = int((min_power*max_angle + (max_power-min_power)*abs(angle))/(max_angle-min_angle))
+        exponent = 2.5  # Adjust this value: higher = later peaking
+        power = int(min_power + (max_power - min_power) * (abs(angle) / max_angle) ** exponent)
     return power
 
 
@@ -70,7 +73,7 @@ def power_distribution():
     m2 = min(m2_p + m2_r, max_power)
     m3 = min(m3_p + m3_r, max_power)
     m4 = min(m4_p + m4_r, max_power)
-    print(m1, m2, m3, m4)
+    #print(m1, m2, m3, m4)
     scf.cf.param.set_value('motorPowerSet.m1', str(m1))
     scf.cf.param.set_value('motorPowerSet.m2', str(m2))
     scf.cf.param.set_value('motorPowerSet.m3', str(m3))
@@ -80,7 +83,23 @@ def power_distribution():
 def vibration(scf):
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
-    while abs(roll[-1]) < 170:
+    
+    # Flag to control the loop
+    running = True
+    
+    def wait_for_enter():
+        nonlocal running
+        input("Press Enter to stop vibration...")
+        running = False
+    
+    # Start the input thread
+    input_thread = threading.Thread(target=wait_for_enter)
+    input_thread.daemon = True
+    input_thread.start()
+    
+    print("Vibration started. Press Enter to stop...")
+    
+    while running:
         power_distribution()
         time.sleep(0.1)
 
