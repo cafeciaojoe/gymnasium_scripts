@@ -9,11 +9,14 @@ from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
-URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
+URI = uri_helper.uri_from_env(default='radio://0/80/2M/a0a0a0a0aa')
 
 # Crazyflie's attitude
 roll = [0]
 pitch = [0]
+
+start_roll = 0
+start_pitch = 0 
 
 min_power = 1000  # Minimum motor power
 max_power = 30000  # Maximum motor power
@@ -24,7 +27,6 @@ max_angle = 30
 def attitude_callback(timestamp, data, logconf):
     roll.append(data['stateEstimate.roll'])
     pitch.append(data['stateEstimate.pitch'])
-
 
 def start_position_printing(scf):
     log_conf = LogConfig(name='Attitude', period_in_ms=100)
@@ -52,18 +54,18 @@ def power_distribution():
     m2_r = 0
     m3_r = 0
     m4_r = 0
-    if pitch[-1] < 0:
-        m1_p = power_profile(pitch[-1])
-        m4_p = power_profile(pitch[-1])
-    elif pitch[-1] > 0:
-        m2_p = power_profile(pitch[-1])
-        m3_p = power_profile(pitch[-1])
-    if roll[-1] < 0:
-        m3_r = power_profile(roll[-1])
-        m4_r = power_profile(roll[-1])
-    elif roll[-1] > 0:
-        m1_r = power_profile(roll[-1])
-        m2_r = power_profile(roll[-1])
+    if pitch[-1] < start_pitch:
+        m1_p = power_profile(pitch[-1]-start_pitch)
+        m4_p = power_profile(pitch[-1]-start_pitch)
+    elif pitch[-1] > start_pitch:
+        m2_p = power_profile(pitch[-1]-start_pitch)
+        m3_p = power_profile(pitch[-1]-start_pitch)
+    if roll[-1] < start_roll:
+        m3_r = power_profile(roll[-1]-start_roll)
+        m4_r = power_profile(roll[-1]-start_roll)
+    elif roll[-1] > start_roll:
+        m1_r = power_profile(roll[-1]-start_roll)
+        m2_r = power_profile(roll[-1]-start_roll)
     m1 = min(m1_p + m1_r, max_power)
     m2 = min(m2_p + m2_r, max_power)
     m3 = min(m3_p + m3_r, max_power)
@@ -95,15 +97,15 @@ def simple_plot():
     points = [
         [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 4 roll
         [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 1 roll
-        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 roll
         [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 3 roll
+        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 roll
         [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 4 pitch
         [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 1 pitch
-        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 pitch
         [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 3 pitch
+        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 pitch
     ]
-    titles = ['Motor 4', 'Motor 1', 'Motor 2', 'Motor 3']
-    y_labels = ['M4 power', 'M1 power', 'M2 power', 'M3 power']
+    titles = ['Motor 4', 'Motor 1', 'Motor 3', 'Motor 2']
+    y_labels = ['M4 power', 'M1 power', 'M3 power', 'M2 power']
 
     fig1, axs1 = plt.subplots(2, 2, figsize=(10, 8))
 
@@ -131,14 +133,24 @@ def simple_plot():
     print('Close the graphs to start...')
     plt.show()
 
+def get_start_pose():
+    global start_pitch, start_roll
+    input("Press Enter to set start pose...")  # This waits for Enter key
+    start_pitch = pitch[-1]
+    start_roll = roll[-1]
+    print(f"start pose set! roll = {start_roll} and pitch = {start_pitch}")
+
 
 if __name__ == '__main__':
+
     cflib.crtp.init_drivers()
 
+    # what does this do?
     factory = CachedCfFactory(rw_cache='./cache')
 
     with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
-        simple_plot()
+        #simple_plot()
         start_position_printing(scf)
         time.sleep(1)
+        get_start_pose()
         vibration(scf)
