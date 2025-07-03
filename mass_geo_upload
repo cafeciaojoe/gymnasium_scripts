@@ -1,0 +1,63 @@
+import cflib.crtp  # noqa
+import csv
+from cflib.crazyflie import Crazyflie
+from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
+from cflib.utils import uri_helper
+from cflib.localization import LighthouseConfigFileManager, LighthouseConfigWriter
+
+# Upload a geometry to one or more Crazyflies.
+
+# Configuration - Update these paths
+csv_file_path = '/Users/joseph/Downloads/Drone Gymnasium URIs - Sheet1.csv'  # Path to CSV file with URIs
+yaml_file_path = '/Users/joseph/Desktop/20250527 ch 1 2 3 4.yaml'  # Path to geometry YAML file
+
+# Load geometry configuration
+mgr = LighthouseConfigFileManager()
+geos, calibs, type = mgr.read(yaml_file_path)
+
+# Read URIs from CSV file
+def read_uris_from_csv(csv_file_path):
+    uri_list = []
+    try:
+        with open(csv_file_path, 'r') as csvfile:
+            reader = csv.reader(csvfile)
+            # Skip header row if present
+            next(reader, None)
+            for row in reader:
+                if row and row[0].strip():  # Check if row exists and first column is not empty
+                    uri_list.append(row[0].strip())
+    except FileNotFoundError:
+        print(f"Error: CSV file '{csv_file_path}' not found.")
+        return []
+    except Exception as e:
+        print(f"Error reading CSV file: {e}")
+        return []
+    
+    return uri_list
+
+# Load URI list from CSV
+uri_list = read_uris_from_csv(csv_file_path)
+
+if not uri_list:
+    print("No URIs found in CSV file. Exiting.")
+    exit(1)
+
+print(f"Found {len(uri_list)} URIs in CSV file:")
+for uri in uri_list:
+    print(f"  - {uri}")
+
+# Initialize the low-level drivers
+cflib.crtp.init_drivers()
+
+for uri in uri_list:
+    #print(f"Uploading geometry to {uri}...")
+    try:
+        with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
+            writer = LighthouseConfigWriter(scf.cf)
+            writer.write_and_store_config(data_stored_cb=None, geos=geos, calibs=calibs)
+        print(f"  ✓ Successfully uploaded to {uri}")
+    except Exception as e:
+        print(f"  ✗ Failed to upload to {uri}: {e}")
+        pass
+
+#TODO add a restart or shut down some other physical signifier that it has been succesfull
