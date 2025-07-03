@@ -74,6 +74,8 @@ def power_distribution():
     m3 = min(m3_p + m3_r, max_power)
     m4 = min(m4_p + m4_r, max_power)
     #print(m1, m2, m3, m4)
+    print(f'roll = {roll[-1]-start_roll}, {start_roll} pitch = {pitch[-1]-start_pitch}, {start_pitch}')
+
     scf.cf.param.set_value('motorPowerSet.m1', str(m1))
     scf.cf.param.set_value('motorPowerSet.m2', str(m2))
     scf.cf.param.set_value('motorPowerSet.m3', str(m3))
