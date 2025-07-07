@@ -11,7 +11,7 @@ from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
 URI = uri_helper.uri_from_env(default='radio://0/30/2M/a0a0a0a0aa')
-URI = uri_helper.uri_from_env(default='usb://0')
+#URI = uri_helper.uri_from_env(default='usb://0')
 
 # Crazyflie's attitude
 roll = [0]
