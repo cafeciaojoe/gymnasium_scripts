@@ -15,7 +15,7 @@ from cflib.utils import uri_helper
 
 # Connection URI for the Crazyflie
 URI = uri_helper.uri_from_env(default='radio://0/30/2M/a0a0a0a0aa')
-URI = uri_helper.uri_from_env(default='usb://0')
+#URI = uri_helper.uri_from_env(default='usb://0')
 
 # Quaternion data from Crazyflie (the clean solution!)
 quat_w = [1.0]  # Quaternion w component (scalar part)
@@ -30,7 +30,7 @@ start_quaternion = None
 min_power = 7000   # Minimum motor power (drone barely responds)
 max_power = 45000  # Maximum motor power (strong vibration)
 min_angle = 0      # Minimum angle before motors activate
-max_angle = 180     # Maximum angle for full power response
+max_angle = 45     # Maximum angle for full power response
 
 def attitude_callback(timestamp, data, logconf):
     """
@@ -62,7 +62,7 @@ def start_position_printing(scf):
         scf: SyncCrazyflie object for communicating with drone
     """
     # Create logging configuration for quaternion data
-    log_conf = LogConfig(name='Quaternion_Attitude', period_in_ms=100)  # 10 Hz updates
+    log_conf = LogConfig(name='Quaternion_Attitude', period_in_ms=10)  # 10 Hz updates
     
     # Add quaternion variables to logging (these are the key change!)
     log_conf.add_variable('stateEstimate.qw', 'float')  # Quaternion w (scalar)
@@ -78,22 +78,19 @@ def start_position_printing(scf):
     
     # Start logging quaternion data
     log_conf.start()
-    print("Started quaternion logging - no more gimbal lock issues!")
 
 def quaternion_to_orientation_angles(current_quat, reference_quat):
     """
-    Convert quaternion difference to pitch/roll/yaw angles relative to reference.
-    This solves the gimbal lock and angle wrapping issues completely!
+    Convert quaternion difference to pitch/roll angles relative to reference.
     
     Args:
         current_quat: [w, x, y, z] current quaternion from drone
         reference_quat: [w, x, y, z] reference quaternion (start position)
         
     Returns:
-        tuple: (pitch_diff, roll_diff, yaw_diff) in degrees
+        tuple: (pitch_diff, roll_diff) in degrees
                - pitch_diff: + = nose up, - = nose down
                - roll_diff: + = right tilt, - = left tilt  
-               - yaw_diff: + = right turn, - = left turn
     """
     # Convert to scipy Rotation objects (note: scipy uses [x,y,z,w] format)
     ref_rot = Rotation.from_quat([reference_quat[1], reference_quat[2], 
@@ -104,16 +101,15 @@ def quaternion_to_orientation_angles(current_quat, reference_quat):
     # Calculate relative rotation: how much has drone rotated from start?
     relative_rotation = ref_rot.inv() * curr_rot
     
-    # Convert to Euler angles (roll, pitch, yaw) in degrees
+    # Convert to Euler angles (roll, pitch) in degrees
     # Using 'xyz' order which matches aircraft convention
     euler_angles = relative_rotation.as_euler('xyz', degrees=True)
     
     # Extract individual angles
     roll_diff = euler_angles[0]   # Rotation around X-axis (left/right tilt)
     pitch_diff = euler_angles[1]  # Rotation around Y-axis (nose up/down)
-    yaw_diff = euler_angles[2]    # Rotation around Z-axis (left/right turn)
     
-    return pitch_diff, roll_diff, yaw_diff
+    return pitch_diff, roll_diff
 
 
 def get_start_pose():
@@ -169,8 +165,6 @@ def power_distribution():
     - Pitch backward (nose up): Activate M2, M3 (back motors) 
     - Roll right: Activate M1, M2 (right motors)
     - Roll left: Activate M3, M4 (left motors)
-    - Yaw right: Activate M1, M3 (diagonal)
-    - Yaw left: Activate M2, M4 (diagonal)
     """
     global start_quaternion
     
@@ -182,16 +176,20 @@ def power_distribution():
     # Get current quaternion from latest data
     current_quaternion = [quat_w[-1], quat_x[-1], quat_y[-1], quat_z[-1]]
     
-    # Convert quaternions to clean pitch/roll/yaw differences (no gimbal lock!)
-    pitch_diff, roll_diff, yaw_diff = quaternion_to_orientation_angles(
+    # Convert quaternions to clean pitch/roll differences (no gimbal lock!)
+    pitch_diff, roll_diff = quaternion_to_orientation_angles(
         current_quaternion, start_quaternion)
     
     # Initialize motor power contributions for each axis
-    # Each motor gets contributions from pitch (p), roll (r), and yaw (y)
-    m1_p = m1_r = m1_y = 0  # Motor 1 contributions
-    m2_p = m2_r = m2_y = 0  # Motor 2 contributions  
-    m3_p = m3_r = m3_y = 0  # Motor 3 contributions
-    m4_p = m4_r = m4_y = 0  # Motor 4 contributions
+    # Each motor gets contributions from pitch (p), roll (r)
+    m1_p = 0
+    m2_p = 0
+    m3_p = 0
+    m4_p = 0
+    m1_r = 0
+    m2_r = 0
+    m3_r = 0
+    m4_r = 0
     
     # PITCH CONTROL: Forward/backward tilt
     if pitch_diff < 0:  # Pitched forward (nose down)
@@ -209,22 +207,14 @@ def power_distribution():
         m3_r = power_profile(abs(roll_diff))  # Left-back motor
         m4_r = power_profile(abs(roll_diff))  # Left-front motor
     
-    # YAW CONTROL: Rotation around vertical axis
-    if yaw_diff > 0:  # Yawed right (clockwise from above)
-        m1_y = power_profile(abs(yaw_diff))  # Diagonal: front-right
-        m3_y = power_profile(abs(yaw_diff))  # Diagonal: back-left
-    elif yaw_diff < 0:  # Yawed left (counter-clockwise from above)
-        m2_y = power_profile(abs(yaw_diff))  # Diagonal: back-right
-        m4_y = power_profile(abs(yaw_diff))  # Diagonal: front-left
-    
     # Combine all contributions and clamp to max_power
-    m1 = min(m1_p + m1_r + m1_y, max_power)
-    m2 = min(m2_p + m2_r + m2_y, max_power)
-    m3 = min(m3_p + m3_r + m3_y, max_power)
-    m4 = min(m4_p + m4_r + m4_y, max_power)
+    m1 = min(m1_p + m1_r, max_power)
+    m2 = min(m2_p + m2_r, max_power)
+    m3 = min(m3_p + m3_r, max_power)
+    m4 = min(m4_p + m4_r, max_power)
     
     # Debug output: show current differences and motor powers
-    #print(f'Orientation: pitch={pitch_diff:.1f}°, roll={roll_diff:.1f}°, yaw={yaw_diff:.1f}°')
+    #print(f'Orientation: pitch={pitch_diff:.1f}°, roll={roll_diff:.1f}°')
     #print(f'Motors: M1={m1}, M2={m2}, M3={m3}, M4={m4}')
     
     # Send motor commands to Crazyflie
@@ -241,36 +231,65 @@ def vibration(scf):
     Args:
         scf: SyncCrazyflie object for drone communication
     """
-    global start_quaternion
-    
-    print("=== VIBRATION CONTROL ACTIVE ===")
-    print("Tilt the drone to feel vibration feedback!")
-    print("Press Ctrl+C to stop...")
-    
-    try:
-        # Main control loop - runs until user stops
-        while True:
-            # Only run control if we have a reference position
-            if start_quaternion is not None:
-                power_distribution()
-            else:
-                print("Waiting for start position to be set...")
-            
-            # Control loop frequency: 20 Hz (50ms between updates)
-            # This gives responsive feedback without overwhelming the drone
-            time.sleep(0.05)
-            
-    except KeyboardInterrupt:
-        print("\n=== STOPPING VIBRATION CONTROL ===")
-        
-        # Safety: Turn off all motors when stopping
-        scf.cf.param.set_value('motorPowerSet.m1', '0')
-        scf.cf.param.set_value('motorPowerSet.m2', '0') 
-        scf.cf.param.set_value('motorPowerSet.m3', '0')
-        scf.cf.param.set_value('motorPowerSet.m4', '0')
-        
-        print("All motors stopped. Safe to disconnect.")
+    scf.cf.param.set_value('motorPowerSet.enable', '1')
+    time.sleep(1)
 
+    print("Vibration started. Press Ctrl+C to stop...")
+
+    try:
+        while True:
+            power_distribution()
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("\nStopping vibration...")
+
+    scf.cf.param.set_value('motorPowerSet.m1', 0)
+    scf.cf.param.set_value('motorPowerSet.m2', 0)
+    scf.cf.param.set_value('motorPowerSet.m3', 0)
+    scf.cf.param.set_value('motorPowerSet.m4', 0)
+    time.sleep(0.5)
+    scf.cf.param.set_value('motorPowerSet.enable', '0')
+    time.sleep(1)
+
+def plot_power_profile():
+    points = [
+        [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 4 roll
+        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 1 roll
+        [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 3 roll
+        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 roll
+        [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 4 pitch
+        [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 1 pitch
+        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 3 pitch
+        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 pitch
+    ]
+    titles = ['Motor 4', 'Motor 1', 'Motor 3', 'Motor 2']
+    y_labels = ['M4 power', 'M1 power', 'M3 power', 'M2 power']
+
+    fig1, axs1 = plt.subplots(2, 2, figsize=(10, 8))
+
+    for i, ax in enumerate(axs1.flat):
+        x_vals, y_vals = zip(*points[i])
+        ax.plot(x_vals, y_vals, marker='o')
+        ax.set_title(titles[i])
+        ax.set_xlabel('Roll [deg]')
+        ax.set_ylabel(y_labels[i])
+        ax.grid(True)
+
+    fig1.tight_layout()
+
+    fig2, axs2 = plt.subplots(2, 2, figsize=(10, 8))
+
+    for i, ax in enumerate(axs2.flat):
+        x_vals, y_vals = zip(*points[i+4])
+        ax.plot(x_vals, y_vals, marker='o', color='orange')
+        ax.set_title(titles[i])
+        ax.set_xlabel('Pitch [deg]')
+        ax.set_ylabel(y_labels[1])
+        ax.grid(True)
+
+    fig2.tight_layout()
+    print('Close the graphs to start...')
+    plt.show()
 
 def get_start_pose():
     """
@@ -298,32 +317,15 @@ if __name__ == '__main__':
     
     # Create cached factory for drone connection (improves connection reliability)
     factory = CachedCfFactory(rw_cache='./cache')
-    
-    try:
-        # Connect to Crazyflie drone
-        with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
-            print(f"Connected to Crazyflie at {URI}")
-            
-            # Start quaternion data logging (10 Hz)
-            start_position_printing(scf)
-            
-            # Give logging time to start and collect initial data
-            print("Collecting initial orientation data...")
-            time.sleep(2)
-            
-            # User sets the reference position
-            get_start_pose()
-            
-            # Start the main vibration control loop
-            vibration(scf)
-            
-    except Exception as e:
-        print(f"Error: {e}")
-        print("Check that:")
-        print("- Crazyflie is powered on")
-        print("- Radio dongle is connected") 
-        print("- URI is correct")
-        print("- No other programs are using the drone")
+
+    # Connect to Crazyflie drone
+    with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
+        print(f"Connected to Crazyflie at {URI}")
+        #plot_power_profile()
+        # Start quaternion data logging (10 Hz)
+        start_position_printing(scf)
+        time.sleep(1)
+        get_start_pose()
+        # Start the main vibration control loop
+        vibration(scf)
         
-    finally:
-        print("Program ended. Safe to disconnect drone.")

@@ -13,6 +13,7 @@ from cflib.utils import uri_helper
 
 # Connection URI for the Crazyflie
 URI = uri_helper.uri_from_env(default='radio://0/30/2M/a0a0a0a0aa')
+#URI = uri_helper.uri_from_env(default='usb://0')
 
 # Quaternion data from Crazyflie
 quat_w = [1.0]  # Quaternion w component (scalar part)
@@ -164,6 +165,9 @@ def vibration(scf):
     print("All motors vibrate equally based on total rotation from start pose!")
     print("Press Ctrl+C to stop...")
     
+    scf.cf.param.set_value('motorPowerSet.enable', '1')
+    time.sleep(1)
+
     try:
         while True:
             if start_quaternion is not None:
@@ -206,7 +210,9 @@ if __name__ == '__main__':
     print("=== QUATERNION TOTAL ROTATION VIBRATION ===")
     print("Pure magnitude feedback - no directional complexity!")
     
+
     cflib.crtp.init_drivers()
+    factory = CachedCfFactory(rw_cache='./cache')
     
     try:
         with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:

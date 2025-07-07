@@ -11,6 +11,7 @@ from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
 URI = uri_helper.uri_from_env(default='radio://0/30/2M/a0a0a0a0aa')
+URI = uri_helper.uri_from_env(default='usb://0')
 
 # Crazyflie's attitude
 roll = [0]
@@ -85,7 +86,7 @@ def power_distribution():
 def vibration(scf):
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
-    
+
     # Flag to control the loop
     running = True
     
@@ -112,7 +113,6 @@ def vibration(scf):
     time.sleep(0.5)
     scf.cf.param.set_value('motorPowerSet.enable', '0')
     time.sleep(1)
-
 
 def simple_plot():
     points = [
