@@ -27,10 +27,10 @@ quat_z = [0.0]  # Quaternion z component
 start_quaternion = None
 
 # Motor power settings
-min_power = 7000   # Minimum motor power (drone barely responds)
+min_power = 5000   # Minimum motor power (drone barely responds)
 max_power = 45000  # Maximum motor power (strong vibration)
 min_angle = 0      # Minimum angle before motors activate
-max_angle = 45     # Maximum angle for full power response
+max_angle = 90     # Maximum angle for full power response
 
 def attitude_callback(timestamp, data, logconf):
     """
@@ -214,8 +214,8 @@ def power_distribution():
     m4 = min(m4_p + m4_r, max_power)
     
     # Debug output: show current differences and motor powers
-    #print(f'Orientation: pitch={pitch_diff:.1f}°, roll={roll_diff:.1f}°')
-    #print(f'Motors: M1={m1}, M2={m2}, M3={m3}, M4={m4}')
+    print(f'Orientation: pitch={pitch_diff:.1f}°, roll={roll_diff:.1f}°')
+    print(f'Motors: M1={m1}, M2={m2}, M3={m3}, M4={m4}')
     
     # Send motor commands to Crazyflie
     scf.cf.param.set_value('motorPowerSet.m1', str(m1))
