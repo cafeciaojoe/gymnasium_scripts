@@ -76,8 +76,6 @@ if __name__ == '__main__':
         time.sleep(0.5)
         scf.cf.param.set_value('motorPowerSet.enable', '0')
         start_acceleration_printing(scf)
-        time.sleep(1)
-        scf.cf.platform.send_arming_request(True)
         time.sleep(0.5)
         scf.cf.param.set_value('motorPowerSet.enable', '1')
         time.sleep(0.5)
@@ -90,8 +88,6 @@ if __name__ == '__main__':
 
         time.sleep(0.5)
         scf.cf.param.set_value('motorPowerSet.enable', '0')
-        time.sleep(0.5)
-        scf.cf.platform.send_arming_request(False)
         time.sleep(0.5)
         scf.close_link()
         time.sleep(0.5)
