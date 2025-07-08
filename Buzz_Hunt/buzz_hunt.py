@@ -23,8 +23,7 @@ radius = 5  # Vibrations start when d <= radius
 min_power = 1000  # Minimum motor power
 max_power = 50000  # Maximum motor power
 duration = 10000  # Duration of the script
-LINEAR_CURVE = True
-EXPONENTIAL_CURVE = False
+CURVE_TYPE = 1  # 1 for Linear and 2 for Exponential
 
 
 def random_3d_point():
@@ -67,9 +66,9 @@ def power_distribution(pow):
 
 
 def power_calculator(dist):
-    if LINEAR_CURVE is True:
+    if CURVE_TYPE == 1:
         power = int((min_power-max_power)/radius * dist + max_power)
-    elif EXPONENTIAL_CURVE is True:
+    elif CURVE_TYPE == 2:
         b = math.log((min_power+1) / max_power) / (radius)
         a = max_power
         power = int(a * math.exp(b * dist))
@@ -84,9 +83,10 @@ def vibration(scf):
         if d <= radius:
             power = power_calculator(d)
             power_distribution(power)
-            print(f'Distance from target:{d}, Motor power:{int((power-min_power)*100/max_power)}%')
+            pow_percentage = int((power-min_power)*100/max_power)
+            print(f'Distance from target:{d:.3f}, Motor power:{pow_percentage}%')
             time.sleep(0.1)
-            if d <= 0.4:
+            if pow_percentage >= 90: #  Could replace this with a distance expression
                 scf.cf.param.set_value('sound.effect', '7')
                 Stop = True
                 time.sleep(0.5)
