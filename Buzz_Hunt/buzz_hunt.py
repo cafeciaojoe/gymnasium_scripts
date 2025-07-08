@@ -79,13 +79,17 @@ def power_calculator(dist):
 def vibration(scf):
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
-    end_time = time.time() + duration
-    while time.time() < end_time:
+    Stop = False
+    while Stop is False:
         if d <= radius:
             power = power_calculator(d)
             power_distribution(power)
-            print(f'power:{power}')
+            print(f'Distance from target:{d}, Motor power:{int((power-min_power)*100/max_power)}%')
             time.sleep(0.1)
+            if d <= 0.4:
+                scf.cf.param.set_value('sound.effect', '7')
+                Stop = True
+                time.sleep(0.5)
         else:
             power_distribution(0)
             print('Out of radius. Move closer to the target')

@@ -1,11 +1,12 @@
-# Vibration
+# Buzz Hunt
 
-The `vibration.py` script aims to enable haptics as a means of communication between humans and robots.
+The `buzz_hunt.py` script aims to enable haptics as a means of communication between humans and robots.
 
 
 ## Hardware requirements
 - 1 Crazyflie drone with its propellers removed
 - 1 Lighthouse positioning deck
+- 1 Buzzer deck
 
 
 ## How it works
@@ -17,3 +18,5 @@ The user can also choose the profile of the power sent to the motors, with respe
 Linear curve            |  Exponential curve
 :-------------------------:|:-------------------------:
 ![](resources/LinearCurve.png)  |  ![](resources/ExponentialCurve.png)
+
+The script is terminated when the user finds the point in space, followed by a sound effect.
