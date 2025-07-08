@@ -68,7 +68,13 @@ def power_distribution():
     m2 = min(m2_p + m2_r, max_power)
     m3 = min(m3_p + m3_r, max_power)
     m4 = min(m4_p + m4_r, max_power)
-    print(m1, m2, m3, m4)
+    print('\n' * 50)  # Clear screen
+    print(f'[{m4:^5}]    [{m1:^5}]')
+    print(r'      \   /    ')
+    print(r'       \ /     ')
+    print(r'       / \     ')
+    print(r'      /   \    ')
+    print(f'[{m3:^5}]    [{m2:^5}]')
     scf.cf.param.set_value('motorPowerSet.m1', str(m1))
     scf.cf.param.set_value('motorPowerSet.m2', str(m2))
     scf.cf.param.set_value('motorPowerSet.m3', str(m3))
@@ -95,15 +101,15 @@ def simple_plot():
     points = [
         [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 4 roll
         [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 1 roll
-        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 roll
         [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 3 roll
+        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 roll
         [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 4 pitch
         [(-max_angle, max_power), (min_angle, min_power), (max_angle, min_power)],  # Motor 1 pitch
-        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 pitch
         [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 3 pitch
+        [(-max_angle, min_power), (min_angle, min_power), (max_angle, max_power)],  # Motor 2 pitch
     ]
-    titles = ['Motor 4', 'Motor 1', 'Motor 2', 'Motor 3']
-    y_labels = ['M4 power', 'M1 power', 'M2 power', 'M3 power']
+    titles = ['Motor 4', 'Motor 1', 'Motor 3', 'Motor 2']
+    y_labels = ['M4 power', 'M1 power', 'M3 power', 'M2 power']
 
     fig1, axs1 = plt.subplots(2, 2, figsize=(10, 8))
 
