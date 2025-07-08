@@ -17,7 +17,7 @@ To achieve that, we constantly read the roll and pitch values of the gyro. Depen
 
 Roll Profile           |  Pitch Profile
 :-------------------------:|:-------------------------:
-![](resources/RollProfile.png)  |  ![](resources/PitchProfile.png)
+![](resources/Roll_Profile.png)  |  ![](resources/Pitch_Profile.png)
 
 The user can modify these profiles by changing the `min_angle`, `max_angle`, `min_power`, `max_power` parameters. Keep in mind that the maximum power could be reached both by a roll and by a pitch angle value. However, the command sent to the corresponding motor will not exceed the `max_power` threshold.
 
