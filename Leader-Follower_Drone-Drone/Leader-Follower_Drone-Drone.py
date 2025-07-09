@@ -1,22 +1,3 @@
-'''
-Example of a swarm sharing data and performing a leader-follower scenario
-using the motion commander.
-
-The swarm takes off and the drones hover until the follower's local coordinate
-system is aligned with the global one. Then, the leader performs its own
-trajectory based on commands from the motion commander. The follower is
-constantly commanded to keep a defined distance from the leader, meaning that
-it is moving towards the leader when their current distance is larger than the
-defined one and away from the leader in the opposite scenario.
-All movements refer to the local coordinate system of each drone.
-
-This example is intended to work with an absolute positioning system, it has
-been tested with the lighthouse positioning system.
-
-This example aims at documenting how to use the collected data to define new
-trajectories in real-time. It also indicates how to use the swarm class to
-feed the Crazyflies completely different asynchronized trajectories in parallel.
-'''
 import math
 import time
 from collections import namedtuple
@@ -31,8 +12,8 @@ from cflib.positioning.motion_commander import MotionCommander
 
 # Change uris according to your setup
 # URIs in a swarm using the same radio must also be on the same channel
-Follower = 'radio://0/30/2M/BADC0DE002'  # Follower
-Leader = 'radio://0/30/2M/BA5ED1DEA3'  # Leader
+Follower = 'radio://0/80/2M/E7E7E7E7E7'  # Follower
+Leader = 'radio://0/80/2M/E7E7E7E7E8'  # Leader
 
 # List of URIs
 uris = {
@@ -203,6 +184,33 @@ def leader_follower(scf):
         mc.land()
 
 
+def trajectory_plots(uri1x, uri1y, uri1z, uri2x, uri2y, uri2z):
+    font1 = {'family': 'serif', 'color': '#2d867e', 'size': 20}
+    font2 = {'family': 'serif', 'color': '#2d867e', 'size': 15}
+
+    plt.figure(1)
+    plt.plot(uri1x[10:], uri1y[10:], '.', color='#5681e6')
+    plt.plot(uri2x[10:], uri2y[10:], '.', color='#d34700')
+    plt.xlabel("X-Axis", fontdict=font2)
+    plt.ylabel("Y-Axis", fontdict=font2)
+    plt.title("2D Drone Trajectories", fontdict=font1)
+    plt.legend(["Follower", "Leader"], loc="lower right")
+    ax = plt.gca()
+    ax.set_aspect('equal')
+    plt.grid(color='grey', linestyle='--', linewidth=0.5)
+
+    plt.figure(2)
+    bx = plt.axes(projection='3d')
+    bx.plot3D(uri1x[10:], uri1y[10:], uri1z[10:], '.', color='#5681e6')
+    bx.plot3D(uri2x[10:], uri2y[10:], uri2z[10:], '.', color='#d34700')
+    plt.xlabel("X-Axis", fontdict=font2)
+    plt.ylabel("Y-Axis", fontdict=font2)
+    plt.title("3D Drone Trajectories", fontdict=font1)
+    plt.legend(["Follower", "Leader"], loc="lower right")
+    bx.set_aspect('equal')
+    plt.show()
+
+
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
 
@@ -225,3 +233,8 @@ if __name__ == '__main__':
 
         swarm.parallel_safe(leader_follower)
         time.sleep(0.5)
+
+        swarm.close_links()
+        time.sleep(0.5)
+
+        trajectory_plots(x1, y1, z1, x2, y2, z2)
