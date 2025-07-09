@@ -16,6 +16,7 @@
 At first, the `pynput` package should be installed in the virtual environment.
 It's the package that handles the button input.
 To install it, simply run: `pip3 isntall pynput`
+
 The user defines the trajectory of the Crazyflie by placing position setpoints in space.
 The setpoints correspond to the position of the sensor the moment the left button of the mouse is pressed.
 Every time a new setpoint is added, you get a sound effect.
