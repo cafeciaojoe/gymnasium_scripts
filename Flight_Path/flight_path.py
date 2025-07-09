@@ -12,8 +12,8 @@ from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
 
-Uri_sensor = uri_helper.uri_from_env(default='radio://0/30/2M/A0A0A0A0AA')
-Uri_drone = uri_helper.uri_from_env(default='radio://0/30/2M/BA5ED1DEA0')
+Uri_sensor = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
+Uri_drone = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E8')
 
 points = 5
 x = []
@@ -23,6 +23,7 @@ yaw = []
 collecting = True
 last_time = None
 durations = []
+ENABLE_YAW = False
 
 
 def get_estimated_position(scf):
@@ -61,7 +62,7 @@ def simple_plot():
     ax.set_zlim(min(0, min(z)), max(0, max(z)))
     ax.set_box_aspect([1, 1, 1])
 
-    plt.title('3D Fundamental Points')
+    plt.title('3D Setpoints')
     print('Close the graph to fly...')
     plt.show()
 
@@ -79,9 +80,9 @@ def run_sequence(scf, x, y, z, yaw, durations):
     commander.takeoff(1.0, 2.0)
     time.sleep(3.0)
     for i in range(len(x)):
-        commander.go_to(x[i], y[i], z[i], yaw[i], durations[i])
+        commander.go_to(x[i], y[i], z[i], yaw[i] if ENABLE_YAW is True else 0, durations[i])
         time.sleep(durations[i]+0.2)
-    time.sleep(5)
+    time.sleep(2)
     commander.land(0.0, 2.0)
     time.sleep(2)
     commander.stop()
@@ -127,11 +128,9 @@ if __name__ == '__main__':
             with mouse.Listener(on_click=collect_data) as listener:
                 listener.join()
 
-    print(f'x:{x}\n y:{y}\n z:{z}\n yaw:{yaw}\n durations:{durations}')
     simple_plot()
     print('Drone ready to fly!')
     with SyncCrazyflie(Uri_drone, cf=Crazyflie(rw_cache='./cache')) as scf:
-        # scf.cf.param.set_value('stabilizer.controller', '2')
         scf.cf.param.set_value('posCtlPid.xVelMax', '5')
         scf.cf.param.set_value('posCtlPid.yVelMax', '5')
         scf.cf.param.set_value('posCtlPid.zVelMax', '5')
