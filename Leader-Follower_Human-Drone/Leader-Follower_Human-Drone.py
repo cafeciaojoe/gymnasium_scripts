@@ -1,44 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-#     ||          ____  _ __
-#  +------+      / __ )(_) /_______________ _____  ___
-#  | 0xBC |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
-#  +------+    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
-#   ||  ||    /_____/_/\__/\___/_/   \__,_/ /___/\___/
-#
-#  Copyright (C) 2017-2018 Bitcraze AB
-#
-#  Crazyflie Nano Quadcopter Client
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
-'''
-Example of a swarm sharing data and performing a leader-follower scenario
-using the motion commander, including human interaction.
-
-The follower takes off and turns until the its local coordinate
-system is aligned with the global one. Then, the user can start moving the
-leader around. The follower is constantly commanded to keep a defined distance
-from the leader, meaning that it is moving towards the leader when their
-current distance is larger than the defined one and away from the leader in
-the opposite scenario. All movements refer to its local coordinate system.
-
-This example is intended to work with an absolute positioning system, it has
-been tested with the lighthouse positioning system.
-
-This example aims at documenting how to use the collected data to define new
-trajectories in real-time. It also indicates how to use the swarm class to feed
-the Crazyflies completely different asynchronized trajectories in parallel.
-'''
 import math
 import time
 
@@ -52,8 +11,8 @@ from cflib.positioning.motion_commander import MotionCommander
 
 # Change uris according to your setup
 # URIs in a swarm using the same radio must also be on the same channel
-URI1 = 'radio://0/30/2M/BA5ED1DEA3'  # Follower
-URI2 = 'radio://0/30/2M/BA5ED1DEA0'  # Leader
+Follower = 'radio://0/80/2M/E7E7E7E7E7'  # Follower
+Leader = 'radio://0/80/2M/E7E7E7E7E8'  # Leader
 
 r_min = 0.75  # The minimum distance between the 2 drones
 r_max = 1.25  # The maximum distance between the 2 drones
@@ -70,8 +29,8 @@ yaw2 = [0]
 
 # List of URIs
 uris = {
-    URI1,
-    URI2,
+    Follower,
+    Leader,
 }
 
 
@@ -143,12 +102,12 @@ def pos_to_vel(x1, y1, x2, y2, dist):
 
 def position_callback(uri, data):
     global d
-    if uri == URI1:  # Follower
+    if uri == Follower:
         x1.append(data['stateEstimate.x'])
         y1.append(data['stateEstimate.y'])
         z1.append(data['stateEstimate.z'])
         yaw1.append(data['stateEstimate.yaw'])
-    elif uri == URI2:  # Leader
+    elif uri == Leader:
         x2.append(data['stateEstimate.x'])
         y2.append(data['stateEstimate.y'])
         z2.append(data['stateEstimate.z'])
@@ -173,13 +132,13 @@ def leader_follower(scf):
 
         # The follower turns until it is aligned with the global coordinate system
         while abs(yaw1[-1]) > 2:
-            if scf.__dict__['_link_uri'] == URI1:  # Follower
+            if scf.__dict__['_link_uri'] == Follower:
                 if yaw1[-1] > 0:
                     mc.start_turn_right(36 if abs(yaw1[-1]) > 15 else 9)
                 elif yaw1[-1] < 0:
                     mc.start_turn_left(36 if abs(yaw1[-1]) > 15 else 9)
 
-            elif scf.__dict__['_link_uri'] == URI2:  # Leader
+            elif scf.__dict__['_link_uri'] == Leader:
                 mc.stop()
             time.sleep(0.005)
 
@@ -187,7 +146,7 @@ def leader_follower(scf):
 
         while z2[-1] > 0.2:  # Fly while this condition is true.
 
-            if scf.__dict__['_link_uri'] == URI1:  # Follower
+            if scf.__dict__['_link_uri'] == Follower:
                 if d > r_max:  # Too far, move closer
                     cmd_vel_x, cmd_vel_y = pos_to_vel(x1[-1], y1[-1], x2[-1], y2[-1], d)
                 elif d >= r_min and d <= r_max:  # Optimal distance, stay put
@@ -200,11 +159,38 @@ def leader_follower(scf):
 
                 mc.start_linear_motion(cmd_vel_x, cmd_vel_y, 0)
 
-            elif scf.__dict__['_link_uri'] == URI2:  # Leader
+            elif scf.__dict__['_link_uri'] == Leader:
                 pass
 
             time.sleep(0.005)
         mc.land()
+
+
+def trajectory_plots(uri1x, uri1y, uri1z, uri2x, uri2y, uri2z):
+    font1 = {'family': 'serif', 'color': '#2d867e', 'size': 20}
+    font2 = {'family': 'serif', 'color': '#2d867e', 'size': 15}
+
+    plt.figure(1)
+    plt.plot(uri1x[10:], uri1y[10:], '.', color='#5681e6')
+    plt.plot(uri2x[10:], uri2y[10:], '.', color='#d34700')
+    plt.xlabel("X-Axis", fontdict=font2)
+    plt.ylabel("Y-Axis", fontdict=font2)
+    plt.title("2D Drone Trajectories", fontdict=font1)
+    plt.legend(["Follower", "Leader"], loc="lower right")
+    ax = plt.gca()
+    ax.set_aspect('equal')
+    plt.grid(color='grey', linestyle='--', linewidth=0.5)
+
+    plt.figure(2)
+    bx = plt.axes(projection='3d')
+    bx.plot3D(uri1x[10:], uri1y[10:], uri1z[10:], '.', color='#5681e6')
+    bx.plot3D(uri2x[10:], uri2y[10:], uri2z[10:], '.', color='#d34700')
+    plt.xlabel("X-Axis", fontdict=font2)
+    plt.ylabel("Y-Axis", fontdict=font2)
+    plt.title("3D Drone Trajectories", fontdict=font1)
+    plt.legend(["Follower", "Leader"], loc="lower right")
+    bx.set_aspect('equal')
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -230,4 +216,9 @@ if __name__ == '__main__':
         time.sleep(0.5)
 
         swarm.parallel_safe(leader_follower)
-        time.sleep(1)
+        time.sleep(0.5)
+
+        swarm.close_links()
+        time.sleep(0.5)
+
+        trajectory_plots(x1, y1, z1, x2, y2, z2)
