@@ -36,6 +36,9 @@ vibration_exponent = 1  # Controls vibration intensity curve
 
 log_period = 10 #ms
 
+global execute
+execute = True
+
 
 def attitude_callback(timestamp, data, logconf):
     """
@@ -181,29 +184,38 @@ def vibration(scf):
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
 
-    while True:
+    while execute == True:
         power_distribution(scf)
         time.sleep(.05)  
+    
+    time.sleep(1)
+    # Turn off all motors
+    scf.cf.param.set_value('motorPowerSet.m1', '0')
+    scf.cf.param.set_value('motorPowerSet.m2', '0')
+    scf.cf.param.set_value('motorPowerSet.m3', '0')
+    scf.cf.param.set_value('motorPowerSet.m4', '0')
 
-    try:
-        while True:
-            if len(quat_data_dict[scf._link_uri]) >= 2:
-                power_distribution(scf)
-            else:
-                print("Collecting initial data...")
-            
-            time.sleep(0.05)  # 20 Hz control loop
-            
-    except KeyboardInterrupt:
-        print("\n=== STOPPING VIBRATION CONTROL ===")
-        time.sleep(1)
-        # Turn off all motors
-        scf.cf.param.set_value('motorPowerSet.m1', '0')
-        scf.cf.param.set_value('motorPowerSet.m2', '0')
-        scf.cf.param.set_value('motorPowerSet.m3', '0')
-        scf.cf.param.set_value('motorPowerSet.m4', '0')
+    time.sleep(200)
 
-        time.sleep(1)
+    # try:
+    #     while True:
+    #         if len(quat_data_dict[scf._link_uri]) >= 2:
+    #             power_distribution(scf)
+    #         else:
+    #             print("Collecting initial data...")
+            
+    #         time.sleep(0.05)  # 20 Hz control loop
+            
+    # except KeyboardInterrupt:
+    #     print("\n=== STOPPING VIBRATION CONTROL ===")
+    #     time.sleep(1)
+    #     # Turn off all motors
+    #     scf.cf.param.set_value('motorPowerSet.m1', '0')
+    #     scf.cf.param.set_value('motorPowerSet.m2', '0')
+    #     scf.cf.param.set_value('motorPowerSet.m3', '0')
+    #     scf.cf.param.set_value('motorPowerSet.m4', '0')
+
+    #     time.sleep(1)
 
 
 if __name__ == '__main__':
@@ -222,5 +234,11 @@ if __name__ == '__main__':
         swarm.parallel_safe(start_logging)
         time.sleep(1)
 
-        swarm.parallel_safe(vibration)
-        time.sleep(10)
+        try: 
+            swarm.parallel_safe(vibration)
+            time.sleep(10)
+
+        except KeyboardInterrupt:
+            print("\n=== STOPPING ALL MOTORS ===")
+            execute = False  # Properly stop the vibration lo
+            swarm.parallel_safe(vibration)
