@@ -95,7 +95,20 @@ def flight_commands(mc, scf):
     global Executing, Terminate
     timeTest = 0.2
     distance = 0.4
+    print('Flight!')
+    scf_s.cf.param.set_value('sound.effect', '7')
+
     while Terminate is False:
+
+        if not mc._is_flying and not GoUp:
+            Executing = False
+            GoForward = False
+            GoBack = False
+            GoLeft = False
+            GoRight = False
+            GoDown = False
+            time.sleep(0.001)
+            continue
 
         if GoUp is True:
             if mc._is_flying is False:
@@ -194,8 +207,8 @@ if __name__ == '__main__':
             time.sleep(0.5)
             start_acceleration_printing(scf_s)
             start_position_printing(scf_d)
+            print('Ready?...')
             time.sleep(1)
-            scf_s.cf.param.set_value('sound.effect', '7')
             flight_commands(mc, scf_s)
             time.sleep(0.5)
             scf_d.cf.platform.send_arming_request(False)
