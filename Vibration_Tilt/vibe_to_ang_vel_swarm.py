@@ -9,11 +9,16 @@ import cflib
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.swarm import CachedCfFactory
+from cflib.crazyflie.swarm import Swarm
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
 # Connection URI for the Crazyflie
-URI = uri_helper.uri_from_env(default='radio://0/30/2M/a0a0a0a0aa')
+uris = [
+'radio://0/30/2M/a0a0a0a0aa',
+'radio://0/30/2M/a0a0a0a0ae'
+]
+
 #URI = uri_helper.uri_from_env(default='usb://0')
 
 # Quaternion data from Crazyflie with timestamps
@@ -24,7 +29,7 @@ min_power = 1000   # Minimum motor power
 max_power = 20000  # Maximum motor power 
 
 # Angular velocity response settings
-max_angular_velocity_dps = 1000  # Maximum expected angular velocity (degrees per second)
+max_angular_velocity_dps = 1200  # Maximum expected angular velocity (degrees per second)
 velocity_smoothing_factor = 0.7  # Smoothing factor for velocity changes (0-1)
 current_angular_velocity = 0.0   # Smoothed angular velocity
 
@@ -49,11 +54,11 @@ def attitude_callback(timestamp, data, logconf):
     })
 
 
-def start_position_printing(scf):
+def start_logging(scf):
     """
     Set up logging to receive quaternion data from Crazyflie.
     """
-    log_conf = LogConfig(name='Quaternion_Attitude', period_in_ms=log_period)  
+    log_conf = LogConfig(name='Quaternion_Attitude', period_in_ms=log_period)  # 20 Hz for better velocity estimation
     
     # Add quaternion variables to logging
     log_conf.add_variable('stateEstimate.qw', 'float')
@@ -64,7 +69,7 @@ def start_position_printing(scf):
     scf.cf.log.add_config(log_conf)
     log_conf.data_received_cb.add_callback(attitude_callback)
     log_conf.start()
-    print("Started quaternion logging - angular velocity feedback!")
+    print(f"Started logging for {scf._link_uri}")
 
 
 def calculate_angular_velocity():
@@ -169,13 +174,13 @@ def vibration(scf):
     """
     Main vibration control loop. Angular velocity feedback.
     """
-    print("=== ANGULAR VELOCITY VIBRATION CONTROL ===")
-    print("Motors vibrate based on rotational speed!")
-    print("Rotate the drone faster for stronger vibration!")
-    print("Press Ctrl+C to stop...")
     
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
+
+    while True:
+        power_distribution(scf)
+        time.sleep(.05)  
 
     try:
         while True:
@@ -184,7 +189,7 @@ def vibration(scf):
             else:
                 print("Collecting initial data...")
             
-            time.sleep(.05) 
+            time.sleep(0.05)  # 20 Hz control loop
             
     except KeyboardInterrupt:
         print("\n=== STOPPING VIBRATION CONTROL ===")
@@ -202,29 +207,65 @@ if __name__ == '__main__':
     """
     Main execution - angular velocity feedback system!
     """
-    print("=== QUATERNION ANGULAR VELOCITY VIBRATION ===")
+    print("=== ANGULAR VELOCITY VIBRATION ===")
     print("Vibration intensity based on rotational speed!")
-    print("Faster rotation = stronger vibration!")
-    
 
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
+
+    with Swarm(uris, factory=factory) as swarm:
+    # not resetting estimators or arming the crazyflie as it it not flying
+
+        swarm.parallel_safe(start_logging)
+        time.sleep(1)
+
+        swarm.parallel_safe(vibration)
+        time.sleep(10)
+
+        pass
+
+    # try:
+
     
-    try:
-        with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
-            print(f"Connected to Crazyflie at {URI}")
+    # except Exception as e:
+    #     print(f"Error: {e}")
+    
+    # finally:
+    #     print("Program ended.")
+
+
+
+
+
+
+
+
+# if __name__ == '__main__':
+#     """
+#     Main execution - angular velocity feedback system!
+#     """
+#     print("=== ANGULAR VELOCITY VIBRATION ===")
+#     print("Vibration intensity based on rotational speed!")
+    
+
+#     cflib.crtp.init_drivers()
+#     factory = CachedCfFactory(rw_cache='./cache')
+    
+#     try:
+#         with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
+#             print(f"Connected to Crazyflie at {URI}")
             
-            # Start logging
-            start_position_printing(scf)
-            time.sleep(3)  # Give more time to collect initial data
+#             # Start logging
+#             start_logging(scf)
+#             time.sleep(3)  # Give more time to collect initial data
             
-            print("Ready! Start rotating the drone to feel velocity-based vibration!")
+#             print("Ready! Start rotating the drone to feel velocity-based vibration!")
             
-            # Start vibration control
-            vibration(scf)
+#             # Start vibration control
+#             vibration(scf)
             
-    except Exception as e:
-        print(f"Error: {e}")
+#     except Exception as e:
+#         print(f"Error: {e}")
         
-    finally:
-        print("Program ended.")
+#     finally:
+#         print("Program ended.")
