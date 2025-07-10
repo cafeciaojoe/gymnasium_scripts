@@ -1,4 +1,4 @@
-To create a virtual environment, open a terminal window and navigate to the directory that you cant to place it. Then type:
+To create a virtual environment, open a terminal window and navigate to the directory that you want to place it. Then type:
 `python3 -m venv gymnasiumvenv`
 
 This will set up a virtual environment, and create a folder named "gymnasiumvenv" with subfolders and files.
