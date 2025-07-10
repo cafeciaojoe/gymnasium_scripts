@@ -195,27 +195,7 @@ def vibration(scf):
     scf.cf.param.set_value('motorPowerSet.m3', '0')
     scf.cf.param.set_value('motorPowerSet.m4', '0')
 
-    time.sleep(200)
-
-    # try:
-    #     while True:
-    #         if len(quat_data_dict[scf._link_uri]) >= 2:
-    #             power_distribution(scf)
-    #         else:
-    #             print("Collecting initial data...")
-            
-    #         time.sleep(0.05)  # 20 Hz control loop
-            
-    # except KeyboardInterrupt:
-    #     print("\n=== STOPPING VIBRATION CONTROL ===")
-    #     time.sleep(1)
-    #     # Turn off all motors
-    #     scf.cf.param.set_value('motorPowerSet.m1', '0')
-    #     scf.cf.param.set_value('motorPowerSet.m2', '0')
-    #     scf.cf.param.set_value('motorPowerSet.m3', '0')
-    #     scf.cf.param.set_value('motorPowerSet.m4', '0')
-
-    #     time.sleep(1)
+    time.sleep(1)
 
 
 if __name__ == '__main__':
