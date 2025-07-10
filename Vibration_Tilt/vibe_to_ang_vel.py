@@ -9,29 +9,33 @@ import cflib
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.swarm import CachedCfFactory
+from cflib.crazyflie.swarm import Swarm
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
-# Connection URI for the Crazyflie
-URI = uri_helper.uri_from_env(default='radio://0/30/2M/a0a0a0a0aa')
+
+uris = [
+'radio://0/30/2M/a0a0a0a0aa'
+]
+
 #URI = uri_helper.uri_from_env(default='usb://0')
 
-# Quaternion data from Crazyflie with timestamps
-quat_data = deque(maxlen=10)  # Store recent quaternion data with timestamps
+# Global dictionary to store quaternion data for each Crazyflie
+quat_data_dict = {}
 
 # Motor power settings (swap min and max for inverse experience!)
-min_power = 1000   # Minimum motor power 
+min_power = 5000   # Minimum motor power 
 max_power = 20000  # Maximum motor power 
 
 # Angular velocity response settings
-max_angular_velocity_dps = 1000  # Maximum expected angular velocity (degrees per second)
+max_angular_velocity_dps = 400  # Maximum expected angular velocity (degrees per second)
 velocity_smoothing_factor = 0.7  # Smoothing factor for velocity changes (0-1)
 current_angular_velocity = 0.0   # Smoothed angular velocity
 
 # Vibration response curve
 vibration_exponent = 1  # Controls vibration intensity curve
 
-log_period = 100 #ms
+log_period = 10 #ms
 
 
 def attitude_callback(timestamp, data, logconf):
@@ -39,21 +43,29 @@ def attitude_callback(timestamp, data, logconf):
     Callback function that receives quaternion data from Crazyflie.
     Stores quaternion data with timestamps for velocity calculation.
     """
-    current_time = time.time()
     quat = [data['stateEstimate.qw'], data['stateEstimate.qx'], 
             data['stateEstimate.qy'], data['stateEstimate.qz']]
     
-    quat_data.append({
-        'timestamp': current_time,
+    # Extract URI from logconf.name
+    uri = logconf.name.split(' ')[-1]
+    
+    # Ensure each Crazyflie has its own deque
+    if uri not in quat_data_dict:
+        quat_data_dict[uri] = deque(maxlen=10)
+    
+    quat_data_dict[uri].append({
+        'timestamp': timestamp / 1000.0,  # Convert milliseconds to seconds
         'quaternion': quat
     })
+    
+    #print(f"URI: {uri}, Timestamp: {timestamp}, Data: {data}")
 
 
-def start_position_printing(scf):
+def start_logging(scf):
     """
     Set up logging to receive quaternion data from Crazyflie.
     """
-    log_conf = LogConfig(name='Quaternion_Attitude', period_in_ms=log_period)  
+    log_conf = LogConfig(name='Quaternion_Attitude for '+ scf._link_uri, period_in_ms=log_period)  # 20 Hz for better velocity estimation
     
     # Add quaternion variables to logging
     log_conf.add_variable('stateEstimate.qw', 'float')
@@ -64,23 +76,21 @@ def start_position_printing(scf):
     scf.cf.log.add_config(log_conf)
     log_conf.data_received_cb.add_callback(attitude_callback)
     log_conf.start()
-    print("Started quaternion logging - angular velocity feedback!")
+    print(f"Started logging for {scf._link_uri}")
 
 
-def calculate_angular_velocity():
+def calculate_angular_velocity(uri):
     """
-    Calculate the current angular velocity in degrees per second.
+    Calculate the current angular velocity in degrees per second for a specific Crazyflie.
     Uses recent quaternion data to estimate rotational speed.
-    
-    Returns:
-        float: Angular velocity magnitude in degrees per second
     """
-    if len(quat_data) < 2:
+
+    if uri not in quat_data_dict or len(quat_data_dict[uri]) < 2:
         return 0.0
     
     # Get the two most recent data points
-    current = quat_data[-1]
-    previous = quat_data[-2]
+    current = quat_data_dict[uri][-1]
+    previous = quat_data_dict[uri][-2]
     
     # Calculate time difference
     dt = current['timestamp'] - previous['timestamp']
@@ -106,8 +116,7 @@ def calculate_angular_velocity():
     angular_velocity_rad_per_sec = angular_displacement_rad / dt
     angular_velocity_deg_per_sec = np.degrees(angular_velocity_rad_per_sec)
     
-    return angular_velocity_deg_per_sec
-
+    return angular_velocity_deg_per_sec #float
 
 def power_profile(angular_velocity_dps):
     """
@@ -142,7 +151,7 @@ def power_distribution(scf):
     global current_angular_velocity
     
     # Calculate instantaneous angular velocity
-    instantaneous_velocity = calculate_angular_velocity()
+    instantaneous_velocity = calculate_angular_velocity(scf._link_uri)
     
     # Apply smoothing to reduce jitter
     current_angular_velocity = (velocity_smoothing_factor * current_angular_velocity + 
@@ -156,7 +165,7 @@ def power_distribution(scf):
     
     # Debug output (reduced frequency to avoid spam)
     if time.time() % 0.2 < 0.05:  # Print every ~200ms
-        print(f'Angular velocity: {current_angular_velocity:.1f}°/s → Motor power: {motor_power}')
+        print(f'URI: {scf._link_uri}, Angular velocity: {current_angular_velocity:.1f}°/s → Motor power: {motor_power}')
     
     # Send commands to all motors
     scf.cf.param.set_value('motorPowerSet.m1', str(m1))
@@ -169,62 +178,55 @@ def vibration(scf):
     """
     Main vibration control loop. Angular velocity feedback.
     """
-    print("=== ANGULAR VELOCITY VIBRATION CONTROL ===")
-    print("Motors vibrate based on rotational speed!")
-    print("Rotate the drone faster for stronger vibration!")
-    print("Press Ctrl+C to stop...")
     
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
 
+    # while True:
+    #     power_distribution(scf)
+    #     time.sleep(.05)  
+
     try:
         while True:
-            if len(quat_data) >= 2:
+            if len(quat_data_dict[scf._link_uri]) >= 2:
                 power_distribution(scf)
             else:
                 print("Collecting initial data...")
             
-            time.sleep(.05) 
+            time.sleep(0.05)  # 20 Hz control loop
             
     except KeyboardInterrupt:
         print("\n=== STOPPING VIBRATION CONTROL ===")
-        
+        time.sleep(1)
         # Turn off all motors
         scf.cf.param.set_value('motorPowerSet.m1', '0')
         scf.cf.param.set_value('motorPowerSet.m2', '0')
         scf.cf.param.set_value('motorPowerSet.m3', '0')
         scf.cf.param.set_value('motorPowerSet.m4', '0')
+
+        time.sleep(1)
         
-        print("All motors stopped. Safe to disconnect.")
 
 
 if __name__ == '__main__':
     """
     Main execution - angular velocity feedback system!
     """
-    print("=== QUATERNION ANGULAR VELOCITY VIBRATION ===")
+    print("=== ANGULAR VELOCITY VIBRATION ===")
     print("Vibration intensity based on rotational speed!")
-    print("Faster rotation = stronger vibration!")
     
 
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
-    
-    try:
-        with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
-            print(f"Connected to Crazyflie at {URI}")
-            
-            # Start logging
-            start_position_printing(scf)
-            time.sleep(3)  # Give more time to collect initial data
-            
-            print("Ready! Start rotating the drone to feel velocity-based vibration!")
-            
-            # Start vibration control
-            vibration(scf)
-            
-    except Exception as e:
-        print(f"Error: {e}")
+
+    with SyncCrazyflie(uris[0], cf=Crazyflie(rw_cache='./cache')) as scf:
+        print(f"Connected to Crazyflie at {uris[0]}")
         
-    finally:
-        print("Program ended.")
+        # Start logging
+        start_logging(scf)
+        time.sleep(3)  # Give more time to collect initial data
+        
+        print("Ready! Start rotating the drone to feel velocity-based vibration!")
+        
+        # Start vibration control
+        vibration(scf)
