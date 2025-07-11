@@ -208,6 +208,8 @@ if __name__ == '__main__':
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
 
+    #TODO add a plot of the vibration funciton here
+
     with Swarm(uris, factory=factory) as swarm:
     # not resetting estimators or arming the crazyflie as it it not flying
 
@@ -220,5 +222,7 @@ if __name__ == '__main__':
 
         except KeyboardInterrupt:
             print("\n=== STOPPING ALL MOTORS ===")
-            execute = False  # Properly stop the vibration lo
+            execute = False 
             swarm.parallel_safe(vibration)
+
+    #TODO add a plot of the movements to show at the end. 
