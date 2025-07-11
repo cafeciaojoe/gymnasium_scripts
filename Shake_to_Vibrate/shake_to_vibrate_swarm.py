@@ -98,43 +98,6 @@ def power_calculator(scf):
     scf.cf.param.set_value('motorPowerSet.m3', str(power))
     scf.cf.param.set_value('motorPowerSet.m4', str(power))
 
-def plot_acc(list1):
-    time = np.arange(len(list1)) * TimePer * 0.001
-
-    plt.figure()
-    plt.plot(time, list1, label='Acc Magnitude')
-
-    plt.xlabel('Time [s]')
-    plt.ylabel('Acceleration [Gs]')
-    plt.title('Acceleration over Time')
-    plt.legend()
-    plt.grid()
-    plt.show()
-
-if __name__ == '__main__':
-    cflib.crtp.init_drivers()
-    factory = CachedCfFactory(rw_cache='./cache')
-    with SyncCrazyflie(Uri, cf=Crazyflie(rw_cache='./cache')) as scf:
-        time.sleep(0.5)
-        scf.cf.param.set_value('motorPowerSet.enable', '0')
-        start_logging(scf)
-        time.sleep(0.5)
-        scf.cf.param.set_value('motorPowerSet.enable', '1')
-        time.sleep(0.5)
-
-        start_time = time.time()
-        while time.time()-start_time < 60:  # Duration of the script
-            pow = power_calculator()
-            vibration(scf, pow)
-            time.sleep(0.2)
-
-        time.sleep(0.5)
-        scf.cf.param.set_value('motorPowerSet.enable', '0')
-        time.sleep(0.5)
-        scf.close_link()
-        time.sleep(0.5)
-        plot_acc(acc_3d)
-
 if __name__ == '__main__':
     print("=== ACCELERATION VIBRATION ===")
     print("Vibration intensity based on acceleration!")
