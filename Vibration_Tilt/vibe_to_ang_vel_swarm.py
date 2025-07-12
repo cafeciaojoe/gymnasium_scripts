@@ -1,9 +1,6 @@
 import time
-import threading
-import math
 import numpy as np
 from scipy.spatial.transform import Rotation
-from collections import deque
 
 import cflib
 from cflib.crazyflie import Crazyflie
@@ -11,7 +8,6 @@ from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.swarm import Swarm
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
-from cflib.utils import uri_helper
 
 ######################### PLAY WITH THESE NUMBERS ##################################
 
@@ -62,15 +58,6 @@ def attitude_callback(timestamp, data, logconf):
     
     # Extract URI from logconf.name
     uri = logconf.name.split(' ')[-1]
-    
-    # # Ensure each Crazyflie has its own deque
-    # if uri not in quat_data_dict:
-    #     quat_data_dict[uri] = deque(maxlen=10)
-    
-    # quat_data_dict[uri].append({
-    #     'timestamp': timestamp / 1000.0,  # Convert milliseconds to seconds
-    #     'quaternion': quat
-    # })
 
     # Ensure each Crazyflie has its own key/list in the dict
     if uri not in quat_data_dict:
@@ -206,6 +193,9 @@ def vibration(scf):
     
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
+
+    if execute == True:
+        print(f'Ready to vibrate! ({scf._link_uri})')
 
     while execute == True:
         power_distribution(scf)
