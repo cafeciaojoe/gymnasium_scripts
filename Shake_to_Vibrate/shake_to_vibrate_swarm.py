@@ -12,6 +12,23 @@ from cflib.crazyflie.swarm import Swarm
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
+
+######################### PLAY WITH THESE NUMBERS ##################################
+
+# Motor power settings 
+max_power = 10000  # Maximum motor power 
+
+# if invert is true then more acceleration makes less vibration, being still produces max power.
+invert = True
+
+# Handy for tuning values when connected to one crazyflie. 
+printing = False
+
+# Smoothing, more samples, smoother response
+samples = 4
+
+####################################################################################
+
 # Connection URI for the Crazyflie
 uris = [
 'radio://0/30/2M/a0a0a0a0aa',
@@ -22,11 +39,8 @@ uris = [
 # Global dictionary to store 3d acceleration data for each Crazyflie
 acc_3d_dict = {}
 
-TimePer = 20  # ms  How fast we log data
-SampleTime = 2  # s
-samples = int(SampleTime * 1000 / TimePer)  # Number of samples
-
-max_power = 20000
+# TODO FIND LOG PERIOD THAT SUITS THE BANDWIDTH, 4 DRONES 
+log_period = 40 #ms
 
 global execute
 execute = True
@@ -53,7 +67,7 @@ def acceleration_callback(timestamp, data, logconf):
 
 
 def start_logging(scf):
-    log_conf = LogConfig(name='Acceleration for '+ scf._link_uri, period_in_ms=TimePer)
+    log_conf = LogConfig(name='Acceleration for '+ scf._link_uri, period_in_ms=log_period)
     log_conf.add_variable('stateEstimate.ax', 'float')
     log_conf.add_variable('stateEstimate.ay', 'float')
     log_conf.add_variable('stateEstimate.az', 'float')
@@ -92,10 +106,15 @@ def power_calculator(scf):
     acc_3d = acc_3d_dict[uri]
 
     mean_acc = sum(acc_3d) / len(acc_3d)
-    power = min(int((mean_acc/.5)*max_power), max_power)
 
-    # Debug output (reduced frequency to avoid spam)
-    #print(f'URI: {scf._link_uri}, Angular velocity: {mean_acc:.1f}°/s → Motor power: {power}')
+    if invert == True:
+        power = max_power - min(int((mean_acc / 0.5) * max_power), max_power)
+    else:
+        power = min(int((mean_acc/.5)*max_power), max_power)
+
+    # Monitor output 
+    if printing == True:
+        print(f'URI: {scf._link_uri}, Angular velocity: {mean_acc:.1f}°/s → Motor power: {power}')
     
 
     scf.cf.param.set_value('motorPowerSet.m1', str(power))
