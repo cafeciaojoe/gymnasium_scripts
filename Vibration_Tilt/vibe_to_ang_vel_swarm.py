@@ -15,24 +15,29 @@ from cflib.utils import uri_helper
 
 ######################### PLAY WITH THESE NUMBERS ##################################
 
+# Motor power settings
+max_power = 20000  
+
+# if invert is true then more acceleration makes less vibration, being still produces max power.
+invert = False
+
+# Handy for tuning values when connected to one crazyflie. 
+printing = False
+
+# the required Angular velocity that produces max power
+max_angular_velocity_dps = 400  # (degrees per second)
+
+# Smoothing, more samples, smoother and more laggy response
+samples = 4
+
+####################################################################################
+
 # Connection URI for the Crazyflie
 uris = [
 'radio://0/30/2M/a0a0a0a0aa',
 'radio://0/30/2M/a0a0a0a0ae',
 'radio://0/30/2M/e7e7e7e7e8'
 ]
-
-# Motor power settings (swap min and max for inverse experience!)
-min_power = 5000   # Minimum motor power 
-max_power = 20000  # Maximum motor power 
-
-# Angular velocity response settings
-max_angular_velocity_dps = 400  # Maximum expected angular velocity (degrees per second)
-
-# Smoothing, more samples, smoother response
-samples = 10
-
-####################################################################################
 
 # Global dictionary to store quaternion data for each Crazyflie
 quat_data_dict = {}
@@ -41,7 +46,7 @@ quat_data_dict = {}
 vibration_exponent = 1 
 
 # TODO FIND LOG PERIOD THAT SUITS THE BANDWIDTH, 4 DRONES 
-log_period = 100 #ms
+log_period = 40 #ms
 
 global execute
 execute = True
@@ -79,8 +84,6 @@ def attitude_callback(timestamp, data, logconf):
     if len(quat_data_dict[uri]) > samples:
         quat_data_dict[uri].pop(0)
 
-
-    
     #print(f"URI: {uri}, Timestamp: {timestamp}, Data: {data}")
 
 
@@ -145,12 +148,13 @@ def calculate_average_angular_velocity(uri):
 def power_profile(angular_velocity_dps):
     """
     Convert angular velocity to motor power using exponential curve.
+    If invert is True, higher angular velocity results in lower motor power.
     
     Args:
         angular_velocity_dps: Angular velocity in degrees per second
         
     Returns:
-        int: Motor power value between min_power and max_power
+        int: Motor power value below max_power
     """
     # Normalize velocity to 0-1 range
     normalized_velocity = angular_velocity_dps / max_angular_velocity_dps
@@ -161,8 +165,12 @@ def power_profile(angular_velocity_dps):
     # Apply exponential curve for more responsive feel
     power_ratio = normalized_velocity ** vibration_exponent
     
+    if invert:
+        # Invert the power calculation: less movement → higher power
+        power_ratio = 1 - power_ratio
+    
     # Convert to motor power
-    power = int(min_power + (max_power - min_power) * power_ratio)
+    power = int((max_power) * power_ratio)
     
     return power
 
@@ -180,8 +188,8 @@ def power_distribution(scf):
     # Set all motors to the same power - pure velocity feedback
     m1 = m2 = m3 = m4 = motor_power
 
-    # Debug output (reduced frequency to avoid spam)
-    if time.time() % 0.2 < 0.05:  # Print every ~200ms
+    # Monitor output
+    if printing == True:
         print(f'URI: {scf._link_uri}, Average angular velocity: {average_velocity:.1f}°/s → Motor power: {motor_power}')
 
     # Send commands to all motors
