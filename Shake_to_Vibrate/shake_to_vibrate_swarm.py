@@ -15,7 +15,8 @@ from cflib.utils import uri_helper
 # Connection URI for the Crazyflie
 uris = [
 'radio://0/30/2M/a0a0a0a0aa',
-'radio://0/30/2M/a0a0a0a0ae'
+'radio://0/30/2M/a0a0a0a0ae',
+'radio://0/30/2M/e7e7e7e7e8'
 ]
 
 # Global dictionary to store 3d acceleration data for each Crazyflie
@@ -25,7 +26,7 @@ TimePer = 20  # ms  How fast we log data
 SampleTime = 2  # s
 samples = int(SampleTime * 1000 / TimePer)  # Number of samples
 
-max_power = 50000
+max_power = 20000
 
 global execute
 execute = True
@@ -39,7 +40,7 @@ def acceleration_callback(timestamp, data, logconf):
     # Extract URI from logconf.name
     uri = logconf.name.split(' ')[-1]
 
-    acc_3d = (math.sqrt(acc_x[-1]**2 + acc_y[-1]**2 + acc_z[-1]**2))
+    acc_3d = (math.sqrt(acc_x**2 + acc_y**2 + acc_z**2))
 
     # Ensure each Crazyflie has its own key/list in the dict
     if uri not in acc_3d_dict:
@@ -93,10 +94,25 @@ def power_calculator(scf):
     mean_acc = sum(acc_3d) / len(acc_3d)
     power = min(int((mean_acc/.5)*max_power), max_power)
 
+    # Debug output (reduced frequency to avoid spam)
+    #print(f'URI: {scf._link_uri}, Angular velocity: {mean_acc:.1f}°/s → Motor power: {power}')
+    
+
     scf.cf.param.set_value('motorPowerSet.m1', str(power))
     scf.cf.param.set_value('motorPowerSet.m2', str(power))
     scf.cf.param.set_value('motorPowerSet.m3', str(power))
     scf.cf.param.set_value('motorPowerSet.m4', str(power))
+
+def filter_uris(uris):
+    valid_uris = []
+    for uri in uris:
+        try:
+            with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
+                print(f"Successfully connected to {uri}")
+                valid_uris.append(uri)
+        except Exception as e:
+            print(f"Failed to connect to {uri}: {e}")
+    return valid_uris
 
 if __name__ == '__main__':
     print("=== ACCELERATION VIBRATION ===")
@@ -105,16 +121,23 @@ if __name__ == '__main__':
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
 
-    with Swarm(uris, factory=factory) as swarm:
-    # not resetting estimators or arming the crazyflie as it it not flying
+    # Filter URIs to only include valid connections
+    valid_uris = filter_uris(uris)
+
+    if not valid_uris:
+        print("No valid Crazyflie connections found. Exiting.")
+        exit()
+
+    with Swarm(valid_uris, factory=factory) as swarm:
+        # Not resetting estimators or arming the Crazyflie as it is not flying
 
         swarm.parallel_safe(start_logging)
         time.sleep(1)
 
-        try: 
+        try:
             swarm.parallel_safe(vibration)
 
         except KeyboardInterrupt:
             print("\n=== STOPPING ALL MOTORS ===")
-            execute = False 
+            execute = False
             swarm.parallel_safe(vibration)
