@@ -13,14 +13,14 @@ from cflib.crazyflie.swarm import Swarm
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
+######################### PLAY WITH THESE NUMBERS ##################################
+
 # Connection URI for the Crazyflie
 uris = [
 'radio://0/30/2M/a0a0a0a0aa',
-'radio://0/30/2M/a0a0a0a0ae'
+'radio://0/30/2M/a0a0a0a0ae',
+'radio://0/30/2M/e7e7e7e7e8'
 ]
-
-# Global dictionary to store quaternion data for each Crazyflie
-quat_data_dict = {}
 
 # Motor power settings (swap min and max for inverse experience!)
 min_power = 5000   # Minimum motor power 
@@ -28,13 +28,20 @@ max_power = 20000  # Maximum motor power
 
 # Angular velocity response settings
 max_angular_velocity_dps = 400  # Maximum expected angular velocity (degrees per second)
-velocity_smoothing_factor = 0.7  # Smoothing factor for velocity changes (0-1)
-current_angular_velocity = 0.0   # Smoothed angular velocity
 
-# Vibration response curve
-vibration_exponent = 1  # Controls vibration intensity curve
+# Smoothing, more samples, smoother response
+samples = 10
 
-log_period = 10 #ms
+####################################################################################
+
+# Global dictionary to store quaternion data for each Crazyflie
+quat_data_dict = {}
+
+# Response curve, 1 = linear response, 
+vibration_exponent = 1 
+
+# TODO FIND LOG PERIOD THAT SUITS THE BANDWIDTH, 4 DRONES 
+log_period = 100 #ms
 
 global execute
 execute = True
@@ -51,14 +58,28 @@ def attitude_callback(timestamp, data, logconf):
     # Extract URI from logconf.name
     uri = logconf.name.split(' ')[-1]
     
-    # Ensure each Crazyflie has its own deque
-    if uri not in quat_data_dict:
-        quat_data_dict[uri] = deque(maxlen=10)
+    # # Ensure each Crazyflie has its own deque
+    # if uri not in quat_data_dict:
+    #     quat_data_dict[uri] = deque(maxlen=10)
     
+    # quat_data_dict[uri].append({
+    #     'timestamp': timestamp / 1000.0,  # Convert milliseconds to seconds
+    #     'quaternion': quat
+    # })
+
+    # Ensure each Crazyflie has its own key/list in the dict
+    if uri not in quat_data_dict:
+        quat_data_dict[uri] = []
+
+    #add the data to the list and keep it the length of samples specified at the top of the script. 
     quat_data_dict[uri].append({
         'timestamp': timestamp / 1000.0,  # Convert milliseconds to seconds
         'quaternion': quat
     })
+    if len(quat_data_dict[uri]) > samples:
+        quat_data_dict[uri].pop(0)
+
+
     
     #print(f"URI: {uri}, Timestamp: {timestamp}, Data: {data}")
 
@@ -80,45 +101,46 @@ def start_logging(scf):
     log_conf.start()
     print(f"Started logging for {scf._link_uri}")
 
-
-def calculate_angular_velocity(uri):
+def calculate_average_angular_velocity(uri):
     """
-    Calculate the current angular velocity in degrees per second for a specific Crazyflie.
-    Uses recent quaternion data to estimate rotational speed.
+    Calculate the average angular velocity in degrees per second for a specific Crazyflie.
+    Uses all quaternion data in the deque to estimate rotational speed.
     """
-
     if uri not in quat_data_dict or len(quat_data_dict[uri]) < 2:
         return 0.0
-    
-    # Get the two most recent data points
-    current = quat_data_dict[uri][-1]
-    previous = quat_data_dict[uri][-2]
-    
-    # Calculate time difference
-    dt = current['timestamp'] - previous['timestamp']
-    if dt <= 0:
-        return 0.0
-    
-    # Convert quaternions to scipy Rotation objects
-    curr_quat = current['quaternion']
-    prev_quat = previous['quaternion']
-    
-    # Convert to scipy format [x,y,z,w]
-    curr_rot = Rotation.from_quat([curr_quat[1], curr_quat[2], curr_quat[3], curr_quat[0]])
-    prev_rot = Rotation.from_quat([prev_quat[1], prev_quat[2], prev_quat[3], prev_quat[0]])
-    
-    # Calculate relative rotation
-    relative_rotation = prev_rot.inv() * curr_rot
-    
-    # Get rotation vector (axis-angle representation)
-    rotation_vector = relative_rotation.as_rotvec()
-    
-    # Calculate angular velocity magnitude
-    angular_displacement_rad = np.linalg.norm(rotation_vector)
-    angular_velocity_rad_per_sec = angular_displacement_rad / dt
-    angular_velocity_deg_per_sec = np.degrees(angular_velocity_rad_per_sec)
-    
-    return angular_velocity_deg_per_sec #float
+
+    angular_velocities = []
+    for i in range(1, len(quat_data_dict[uri])):
+        current = quat_data_dict[uri][i]
+        previous = quat_data_dict[uri][i - 1]
+
+        # Calculate time difference
+        dt = current['timestamp'] - previous['timestamp']
+        if dt <= 0:
+            continue
+
+        # Convert quaternions to scipy Rotation objects
+        curr_quat = current['quaternion']
+        prev_quat = previous['quaternion']
+
+        curr_rot = Rotation.from_quat([curr_quat[1], curr_quat[2], curr_quat[3], curr_quat[0]])
+        prev_rot = Rotation.from_quat([prev_quat[1], prev_quat[2], prev_quat[3], prev_quat[0]])
+
+        # Calculate relative rotation
+        relative_rotation = prev_rot.inv() * curr_rot
+
+        # Get rotation vector (axis-angle representation)
+        rotation_vector = relative_rotation.as_rotvec()
+
+        # Calculate angular velocity magnitude
+        angular_displacement_rad = np.linalg.norm(rotation_vector)
+        angular_velocity_rad_per_sec = angular_displacement_rad / dt
+        angular_velocity_deg_per_sec = np.degrees(angular_velocity_rad_per_sec)
+
+        angular_velocities.append(angular_velocity_deg_per_sec)
+
+    # Return the average angular velocity
+    return np.mean(angular_velocities) if angular_velocities else 0.0
 
 def power_profile(angular_velocity_dps):
     """
@@ -144,31 +166,24 @@ def power_profile(angular_velocity_dps):
     
     return power
 
-
 def power_distribution(scf):
     """
-    Calculate motor power based on angular velocity.
+    Calculate motor power based on average angular velocity.
     All motors vibrate equally based on how fast the drone is rotating.
     """
-    global current_angular_velocity
-    
-    # Calculate instantaneous angular velocity
-    instantaneous_velocity = calculate_angular_velocity(scf._link_uri)
-    
-    # Apply smoothing to reduce jitter
-    current_angular_velocity = (velocity_smoothing_factor * current_angular_velocity + 
-                               (1 - velocity_smoothing_factor) * instantaneous_velocity)
-    
+    # Calculate average angular velocity
+    average_velocity = calculate_average_angular_velocity(scf._link_uri)
+
     # Convert to motor power
-    motor_power = power_profile(current_angular_velocity)
-    
+    motor_power = power_profile(average_velocity)
+
     # Set all motors to the same power - pure velocity feedback
     m1 = m2 = m3 = m4 = motor_power
-    
+
     # Debug output (reduced frequency to avoid spam)
     if time.time() % 0.2 < 0.05:  # Print every ~200ms
-        print(f'URI: {scf._link_uri}, Angular velocity: {current_angular_velocity:.1f}°/s → Motor power: {motor_power}')
-    
+        print(f'URI: {scf._link_uri}, Average angular velocity: {average_velocity:.1f}°/s → Motor power: {motor_power}')
+
     # Send commands to all motors
     scf.cf.param.set_value('motorPowerSet.m1', str(m1))
     scf.cf.param.set_value('motorPowerSet.m2', str(m2))
@@ -197,20 +212,34 @@ def vibration(scf):
 
     time.sleep(1)
 
+def filter_uris(uris):
+    valid_uris = []
+    for uri in uris:
+        try:
+            with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
+                print(f"Successfully connected to {uri}")
+                valid_uris.append(uri)
+        except Exception as e:
+            print(f"Failed to connect to {uri}: {e}")
+    return valid_uris
 
 if __name__ == '__main__':
-    """
-    Main execution - angular velocity feedback system!
-    """
     print("=== ANGULAR VELOCITY VIBRATION ===")
     print("Vibration intensity based on rotational speed!")
 
     cflib.crtp.init_drivers()
     factory = CachedCfFactory(rw_cache='./cache')
 
+    # Filter URIs to only include valid connections
+    valid_uris = filter_uris(uris)
+
+    if not valid_uris:
+        print("No valid Crazyflie connections found. Exiting.")
+        exit()
+
     #TODO add a plot of the vibration funciton here
 
-    with Swarm(uris, factory=factory) as swarm:
+    with Swarm(valid_uris, factory=factory) as swarm:
     # not resetting estimators or arming the crazyflie as it it not flying
 
         swarm.parallel_safe(start_logging)
