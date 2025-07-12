@@ -15,7 +15,7 @@ from cflib.utils import uri_helper
 
 ######################### PLAY WITH THESE NUMBERS ##################################
 
-# Motor power settings
+# Max motor power 60000
 max_power = 20000  
 
 # if invert is true then more acceleration makes less vibration, being still produces max power.
