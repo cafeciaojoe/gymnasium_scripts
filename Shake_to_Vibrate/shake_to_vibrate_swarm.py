@@ -16,7 +16,7 @@ from cflib.utils import uri_helper
 ######################### PLAY WITH THESE NUMBERS ##################################
 
 # Motor power settings 
-max_power = 10000  # Maximum motor power 
+max_power = 20000  # Maximum motor power 
 
 # if invert is true then more acceleration makes less vibration, being still produces max power.
 invert = True
@@ -74,12 +74,15 @@ def start_logging(scf):
     scf.cf.log.add_config(log_conf)
     log_conf.data_received_cb.add_callback(acceleration_callback)
     log_conf.start()
-    print(f"Started logging for {scf._link_uri}")
+    print(f"Started logging for         {scf._link_uri}")
 
 
 def vibration(scf):
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
+
+    if execute == True:
+        print(f'Ready to vibrate!           {scf._link_uri}')
 
     while execute == True:
         power_calculator(scf)
@@ -127,7 +130,7 @@ def filter_uris(uris):
     for uri in uris:
         try:
             with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
-                print(f"Successfully connected to {uri}")
+                print(f"Successfully connected to   {uri}")
                 valid_uris.append(uri)
         except Exception as e:
             print(f"Failed to connect to {uri}: {e}")
