@@ -194,7 +194,7 @@ def vibration(scf):
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
     if execute == True:
-        print(f'Ready to vibrate!           ({scf._link_uri})')
+        print(f'Ready to vibrate!           {scf._link_uri}')
 
     while execute == True:
         power_distribution(scf)
