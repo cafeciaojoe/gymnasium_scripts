@@ -247,7 +247,6 @@ if __name__ == '__main__':
 
         try: 
             swarm.parallel_safe(vibration)
-            time.sleep(10)
 
         except KeyboardInterrupt:
             print("\n=== STOPPING ALL MOTORS ===")
