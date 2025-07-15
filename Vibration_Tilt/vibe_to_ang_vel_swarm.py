@@ -11,7 +11,9 @@ from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 
 ######################### PLAY WITH THESE NUMBERS ##################################
 
-# Max motor power 60000
+#NOTE: Press control + C to end the script. 
+
+# 60000 is the highest you can go and is very aggressive. Adviced to go no higher than 50000
 max_power = 20000  
 
 # if invert is true then more acceleration makes less vibration, being still produces max power.
@@ -26,6 +28,9 @@ max_angular_velocity_dps = 400  # (degrees per second)
 # Smoothing, more samples, smoother and more laggy response
 samples = 4
 
+# Response curve, 1 = linear response.
+vibration_exponent = 1 
+
 ####################################################################################
 
 # Connection URI for the Crazyflie
@@ -37,9 +42,6 @@ uris = [
 
 # Global dictionary to store quaternion data for each Crazyflie
 quat_data_dict = {}
-
-# Response curve, 1 = linear response, 
-vibration_exponent = 1 
 
 # TODO FIND LOG PERIOD THAT SUITS THE BANDWIDTH, 4 DRONES 
 log_period = 40 #ms
