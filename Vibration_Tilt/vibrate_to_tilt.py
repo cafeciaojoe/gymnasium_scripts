@@ -11,6 +11,11 @@ from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
+"""
+work in progress, potentialally plagued by this issue with the crazyflie.
+https://github.com/bitcraze/crazyflie-firmware/issues/1292
+"""
+
 # Connection URI for the Crazyflie
 URI = uri_helper.uri_from_env(default='radio://0/30/2M/a0a0a0a0aa')
 #URI = uri_helper.uri_from_env(default='usb://0')
