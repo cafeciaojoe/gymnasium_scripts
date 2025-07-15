@@ -11,7 +11,7 @@ It is taken directly from Bitcraze's [cflib examples](https://github.com/bitcraz
 ![](resources/MultirangerPushHardware.JPG)
 
 ## How it works
-The Crazyflie takes off at a defined height.
+The Crazyflie takes off at a height defined by the user through the `DEFAULT_HEIGHT` parameter.
 The Multiranger deck continuously measures the distances in all directions and tries to keep away from anything that comes closer than 0.2m by setting a velocity in the opposite direction.
 
 The script is terminated by placing your hand above the Crazyflie.
