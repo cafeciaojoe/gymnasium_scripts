@@ -11,8 +11,8 @@ The purpose of `vibe_to_acceleration.py` is to control the vibration intensity o
 The script connects to multiple Crazyflie drones and logs their acceleration data in real-time. Using this data, it calculates the mean acceleration of each drone and adjusts the motor power to simulate vibration intensity. The vibration intensity is proportional to the acceleration, creating a feedback loop based on movement.
 
 ### Adjustable Parameters
-- `max_power`: works between 1000 and 60000
-- `samples`: Number of acceleration samples used for smoothing (default: 4).
+- `max_power`: up to 60000
+- `samples`: Number of acceleration samples taken and averaged for smoothing (default: 4).
 - `invert`: If `True`, higher acceleration results in lower motor power.
 
 ### Termination
