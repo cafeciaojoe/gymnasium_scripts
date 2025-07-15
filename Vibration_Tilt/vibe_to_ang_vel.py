@@ -37,6 +37,7 @@ vibration_exponent = 1
 uris = [
 'radio://0/30/2M/a0a0a0a0aa',
 'radio://0/30/2M/a0a0a0a0ae',
+'radio://0/30/2M/e7e7e7e7e7',
 'radio://0/30/2M/e7e7e7e7e8'
 ]
 
