@@ -3,8 +3,8 @@
 The purpose of `fist_flight.py` is to use force (acceleration) data from the user to control a Crazyflie drone.
 
 ## Hardware requirements
-- 1 Crazyflie drone
-- 1 Crazyflie drone with its propellers removed
+- 1 Crazyflie drone (for flying)
+- 1 Crazyflie drone (for sensing)
 - 1 Lighthouse positioning deck or a Flow deck v2
 
 
