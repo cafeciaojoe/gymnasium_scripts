@@ -15,11 +15,13 @@ from cflib.utils import uri_helper
 
 ######################### PLAY WITH THESE NUMBERS ##################################
 
-# Motor power settings 
+# NOTE: Press control + C to end the script. 
+
+# 60000 is the highest you can go and is very aggressive. Adviced to go no higher than 50000
 max_power = 20000  # Maximum motor power 
 
 # if invert is true then more acceleration makes less vibration, being still produces max power.
-invert = True
+invert = False
 
 # Handy for tuning values when connected to one crazyflie. 
 printing = False
