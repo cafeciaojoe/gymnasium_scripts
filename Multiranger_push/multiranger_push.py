@@ -9,6 +9,7 @@ from cflib.utils.multiranger import Multiranger
 
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 
+DEFAULT_HEIGHT = 0.5
 
 def is_close(range):
     MIN_DISTANCE = 0.2  # m
@@ -29,7 +30,7 @@ if __name__ == '__main__':
         scf.cf.platform.send_arming_request(True)
         time.sleep(1.0)
 
-        with MotionCommander(scf) as motion_commander:
+        with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as motion_commander:
             with Multiranger(scf) as multiranger:
                 keep_flying = True
 
