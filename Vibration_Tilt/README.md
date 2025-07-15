@@ -21,6 +21,9 @@ The script connects to multiple Crazyflie drones and logs their quaternion data 
 - **Exponent Above 1**: Produces a convex curve, making the system less sensitive to small angular velocity changes. Motor power increases slowly at lower angular velocities but accelerates as angular velocity approaches the maximum.
 - **Exponent Equal to 1**: Produces a linear response, where motor power increases proportionally with angular velocity.
 
+### Bandwidth
+The log_period might need to be lengthened if you add so many crazyflies that you exceed the bandwidth of the radio. The log_period will also affect the responsiveness of the vibration. 
+
 ### Termination
 The script can be terminated by pressing `Ctrl+C`. All motors are automatically turned off when the script exits.
 
