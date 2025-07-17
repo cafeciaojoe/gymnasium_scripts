@@ -25,6 +25,7 @@ max_power = 50000  # Maximum motor power
 duration = 10000  # Duration of the script
 CURVE_TYPE = 1  # 1 for Linear and 2 for Exponential
 
+Stop = False
 
 def random_3d_point():
     # Define the limits of the flying space
@@ -78,7 +79,7 @@ def power_calculator(dist):
 def vibration(scf):
     scf.cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
-    Stop = False
+    global Stop
     while Stop is False:
         if d <= radius:
             power = power_calculator(d)
@@ -127,4 +128,9 @@ if __name__ == '__main__':
     with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
         start_position_printing(scf)
         time.sleep(1)
-        vibration(scf)
+        try:
+            vibration(scf)
+        except KeyboardInterrupt:
+            print("\n=== STOPPING ALL MOTORS ===")
+            Stop = True
+            vibration(scf)
