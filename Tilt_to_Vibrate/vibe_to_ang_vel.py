@@ -184,9 +184,9 @@ def power_distribution(scf):
 
     # Send commands to all motors
     scf.cf.param.set_value('motorPowerSet.m1', str(m1))
-    scf.cf.param.set_value('motorPowerSet.m2', str(m2))
-    scf.cf.param.set_value('motorPowerSet.m3', str(m3))
-    scf.cf.param.set_value('motorPowerSet.m4', str(m4))
+    #scf.cf.param.set_value('motorPowerSet.m2', str(m2))
+    #scf.cf.param.set_value('motorPowerSet.m3', str(m3))
+    #scf.cf.param.set_value('motorPowerSet.m4', str(m4))
 
 
 def vibration(scf):
@@ -206,9 +206,9 @@ def vibration(scf):
     time.sleep(1)
     # Turn off all motors
     scf.cf.param.set_value('motorPowerSet.m1', '0')
-    scf.cf.param.set_value('motorPowerSet.m2', '0')
-    scf.cf.param.set_value('motorPowerSet.m3', '0')
-    scf.cf.param.set_value('motorPowerSet.m4', '0')
+    #scf.cf.param.set_value('motorPowerSet.m2', '0')
+    #scf.cf.param.set_value('motorPowerSet.m3', '0')
+    #scf.cf.param.set_value('motorPowerSet.m4', '0')
 
     time.sleep(1)
 
@@ -247,6 +247,7 @@ if __name__ == '__main__':
 
         try: 
             swarm.parallel_safe(vibration)
+            time.sleep(1)
 
         except KeyboardInterrupt:
             print("\n=== STOPPING ALL MOTORS ===")
