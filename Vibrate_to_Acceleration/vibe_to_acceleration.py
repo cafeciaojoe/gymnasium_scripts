@@ -124,9 +124,9 @@ def power_calculator(scf):
     
 
     scf.cf.param.set_value('motorPowerSet.m1', str(power))
-    scf.cf.param.set_value('motorPowerSet.m2', str(power))
-    scf.cf.param.set_value('motorPowerSet.m3', str(power))
-    scf.cf.param.set_value('motorPowerSet.m4', str(power))
+    #scf.cf.param.set_value('motorPowerSet.m2', str(power))
+    #scf.cf.param.set_value('motorPowerSet.m3', str(power))
+    #scf.cf.param.set_value('motorPowerSet.m4', str(power))
 
 def filter_uris(uris):
     valid_uris = []
