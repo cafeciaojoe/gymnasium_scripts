@@ -4,7 +4,7 @@ The `buzz_hunt.py` script aims to enable haptics as a means of communication bet
 
 
 ## Hardware requirements
-- 1 Crazyflie drone with its propellers removed
+- 1 Crazyflie drone. We recommend replacing the motors with vibration motors or at least replacing the propellers with a small counter weight for each shaft.
 - 1 Lighthouse positioning deck
 - 1 Buzzer deck
 
