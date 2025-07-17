@@ -16,7 +16,7 @@ roll = [0]
 pitch = [0]
 
 min_power = 1000  # Minimum motor power
-max_power = 30000  # Maximum motor power
+max_power = 30000  # Maximum motor power. Warning: Avoid setting this above 30000
 min_angle = 0   # The Crazyflie hovers while: min_angle < roll,pitch < max_angle
 max_angle = 30
 
