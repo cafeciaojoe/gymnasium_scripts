@@ -4,8 +4,8 @@
 
 
 ## Hardware requirements
-- Lighthouse positioning system
-- 2 Crazyflie drones
+- 1 Crazyflie drone (for sensing)
+- 1 Crazyflie drone (for flying)
 - 2 Lighthouse positioning decks
 - 1 Buzzer deck
 - 1 Wireless mouse or a good friend willing to stay on the laptop
@@ -16,6 +16,7 @@
 At first, the `pynput` package should be installed in the virtual environment.
 It's the package that handles the button input.
 To install it, simply run: `pip3 isntall pynput`
+You might also need to allow mouse access for terminal or IDE.
 
 The user defines the trajectory of the Crazyflie by placing position setpoints in space.
 The setpoints correspond to the position of the sensor the moment the left button of the mouse is pressed.
