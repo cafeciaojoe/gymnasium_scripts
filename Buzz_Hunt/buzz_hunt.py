@@ -22,16 +22,18 @@ z1 = [0]
 radius = 5  # Vibrations start when d <= radius
 min_power = 1000  # Minimum motor power
 max_power = 50000  # Maximum motor power
-duration = 10000  # Duration of the script
 CURVE_TYPE = 1  # 1 for Linear and 2 for Exponential
+Space_limits_x = (-2.8, 2.6)
+Space_limits_y = (-3.0, 0.6)
+Space_limits_z = (0.2, 1.8)
 
 Stop = False
 
 def random_3d_point():
     # Define the limits of the flying space
-    x = [random.uniform(-2.8, 2.6)]
-    y = [random.uniform(-3.0, 0.6)]
-    z = [random.uniform(0.2, 1.8)]
+    x = random.uniform(*Space_limits_x)
+    y = random.uniform(*Space_limits_y)
+    z = random.uniform(*Space_limits_z)
     return (x, y, z)
 
 
@@ -41,7 +43,7 @@ def position_callback(timestamp, data, logconf):
     y1.append(data['stateEstimate.y'])
     z1.append(data['stateEstimate.z'])
 
-    d = math.sqrt(pow((x1[-1]-x2[-1]), 2)+pow((y1[-1]-y2[-1]), 2)+pow((z1[-1]-z2[-1]), 2))
+    d = math.sqrt(pow((x1[-1]-x2), 2)+pow((y1[-1]-y2), 2)+pow((z1[-1]-z2), 2))
 
 
 def start_position_printing(scf):
@@ -123,7 +125,7 @@ if __name__ == '__main__':
     simple_plot()
 
     x2, y2, z2 = random_3d_point()
-    print(x2, y2, z2)
+    print(f'The target is at:[{x2:.3f}, {y2:.3f}, {z2:.3f}]')
 
     with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
         start_position_printing(scf)
