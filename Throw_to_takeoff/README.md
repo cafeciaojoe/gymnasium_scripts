@@ -23,4 +23,4 @@ When the Crazyflie is on the ground or being carried around, the acceleration is
 During free fall, acceleration approaches 0.
 To activate the motors, the acceleration and the velocity have to be close to 0.
 
-ToDo: Add figure
+![](resources/Throw_to_takeoff_figures.png)
