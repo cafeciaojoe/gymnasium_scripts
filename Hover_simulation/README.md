@@ -10,7 +10,7 @@ The purpose of `hover_simulation.py` is to demonstrate the hovering behavior of 
 ## How it works
 The user holds the Crazyflie at a horizontal state, just as it was flying. By tilting it around the x and y axes, different motors are activated to counter that state and steer it again towards the horizontal one.
 
-![](resources/CrazyflieCoordinateFrame.png)
+![](resources/CrazyflieCoordinateFrame.jpg)
 
 To achieve that, we constantly read the roll and pitch values of the gyro. Depending on these values, we calculate the necessary power for each motor. The profiles of each motor's power with respect to roll and pitch angles is shown in the following graphs.
 
