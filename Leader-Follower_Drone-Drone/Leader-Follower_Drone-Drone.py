@@ -179,7 +179,7 @@ def leader_follower(scf):
                 else:
                     mc.stop()
 
-            time.sleep(0.005)
+            time.sleep(0.01)
         time.sleep(1)
         mc.land()
 
