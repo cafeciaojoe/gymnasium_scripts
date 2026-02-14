@@ -162,7 +162,7 @@ def leader_follower(scf):
             elif scf.__dict__['_link_uri'] == Leader:
                 pass
 
-            time.sleep(0.005)
+            time.sleep(0.01)
         mc.land()
 
 
