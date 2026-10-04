@@ -22,9 +22,9 @@ z1 = [0]
 radius = 5  # Vibrations start when d <= radius
 min_power = 1000  # Minimum motor power
 max_power = 50000  # Maximum motor power
-CURVE_TYPE = 1  # 1 for Linear and 2 for Exponential
-Space_limits_x = (-2.8, 2.6)
-Space_limits_y = (-3.0, 0.6)
+CURVE_TYPE = 2  # 1 for Linear and 2 for Exponential
+Space_limits_x = (-0.5, 0.5)
+Space_limits_y = (-0.5, 0.5)
 Space_limits_z = (0.2, 1.8)
 
 Stop = False
@@ -90,9 +90,9 @@ def vibration(scf):
             print(f'Distance from target:{d:.3f}, Motor power:{pow_percentage}%')
             time.sleep(0.1)
             if pow_percentage >= 90: #  Could replace this with a distance expression
-                scf.cf.param.set_value('sound.effect', '7')
                 Stop = True
                 time.sleep(0.5)
+                scf.cf.param.set_value('sound.effect', '7')
         else:
             power_distribution(0)
             print('Out of radius. Move closer to the target')

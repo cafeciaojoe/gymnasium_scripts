@@ -21,11 +21,11 @@ uris = {
     Leader,
 }
 
-r_min = 0.8  # The minimum distance between the 2 drones
-r_max = 1.0  # The maximum distance between the 2 drones
+r_min = 0.2  # The minimum distance between the 2 drones
+r_max = 0.5  # The maximum distance between the 2 drones
 DEFAULT_HEIGHT = 0.75
 DEFAULT_VELOCITY = 0.5
-MAX_VELOCITY = 2
+MAX_VELOCITY = 1
 x1 = [0]
 y1 = [0]
 z1 = [0]
@@ -175,7 +175,7 @@ def leader_follower(scf):
                 elif time.time() - start_time < 6:
                     mc.start_back(DEFAULT_VELOCITY)
                 elif time.time() - start_time < 20:
-                    mc.start_circle_right(0.9, DEFAULT_VELOCITY)
+                    mc.start_circle_right(0.5, DEFAULT_VELOCITY)
                 else:
                     mc.stop()
 

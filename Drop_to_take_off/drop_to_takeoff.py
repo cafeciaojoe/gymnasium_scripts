@@ -13,7 +13,7 @@ from cflib.utils import uri_helper
 Uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 
 acc_z = []
-TimePer = 100  # ms
+TimePer = 10  # ms
 Takeoff = False
 Executing = False
 
@@ -62,6 +62,7 @@ if __name__ == '__main__':
         start_acceleration_printing(scf)
         time.sleep(1)
         scf.cf.platform.send_arming_request(True)
+        print('Ready - drop the Crazyflie to take off')
         Terminate = False
         while Terminate is False:
             if Takeoff is True:
