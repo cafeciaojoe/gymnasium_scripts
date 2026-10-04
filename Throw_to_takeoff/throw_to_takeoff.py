@@ -14,7 +14,7 @@ Uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 
 vel_z = []
 acc_z = []
-TimePer = 100  # ms
+TimePer = 10  # ms
 Takeoff = False
 Executing = False
 
@@ -75,7 +75,7 @@ if __name__ == '__main__':
         time.sleep(1)
         scf.cf.platform.send_arming_request(True)
         Terminate = False
-        print('Ready to takeoff...')
+        print('Ready - toss the Crazyflie up into the air to take off')
         while Terminate is False:
             if Takeoff is True:
                 scf.cf.high_level_commander.go_to(0, 0, 0, 0, 2, relative=True)
