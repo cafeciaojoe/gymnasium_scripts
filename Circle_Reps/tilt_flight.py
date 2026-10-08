@@ -11,7 +11,7 @@ from cflib.crazyflie.swarm import Swarm
 # Change uris according to your setup
 # URIs in a swarm using the same radio must also be on the same channel
 Sensor = 'radio://0/40/2M/BADF00D004'  # Hand-held sensor drone (does not fly)
-Flyer = 'radio://0/40/2M/BADF00D005'   # The drone that flies
+Flyer = 'radio://0/40/2M/BADF00D009'   # The drone that flies
 
 # All drones the script connects to
 uris = {
@@ -36,7 +36,7 @@ CONTROL = 'speed'  # 'speed' or 'angle'
 HEIGHT = 0.8       # Flying height [m]
 
 # 'speed' mode
-DEAD_ZONE = 3          # Sensor tilts smaller than this are ignored [deg]
+DEAD_ZONE = 0          # Sensor tilts smaller than this are ignored [deg]
 SPEED_PER_DEG = 0.02   # Flyer speed per degree of sensor tilt [m/s per deg]
 MAX_SPEED = 0.5        # [m/s]
 

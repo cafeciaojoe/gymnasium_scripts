@@ -2,6 +2,7 @@ import math
 import signal
 import threading
 import time
+from collections import deque
 
 import cflib.crtp
 from cflib.crazyflie.log import LogConfig
@@ -11,7 +12,7 @@ from cflib.crazyflie.swarm import Swarm
 # Change uris according to your setup
 # URIs in a swarm using the same radio must also be on the same channel
 Sensor = 'radio://0/40/2M/BADF00D004'  # Hand-held sensor drone (does not fly)
-Flyer = 'radio://0/40/2M/BADF00D005'   # The drone that flies the circle
+Flyer = 'radio://0/40/2M/BADF00D009'   # The drone that flies the circle
 
 # All drones the script connects to
 uris = {
@@ -36,6 +37,12 @@ DEAD_ZONE = 3       # Sensor tilts smaller than this are ignored [deg]
 SHIFT_SPEED = 0.02  # How fast the circle slides per degree of tilt [m/s per deg]
 MAX_SHIFT = 1.0     # Furthest the circle centre can slide from where it started [m]
 
+# Bounding box in room coordinates (the Lighthouse's x and y) [m].
+# The flyer is never sent outside it: if the circle reaches the edge,
+# it flies along the edge instead.
+X_MIN, X_MAX = -2.25, 2.25
+Y_MIN, Y_MAX = -2.25, 2.25
+
 # Vibration: the flyer's motor 1 power is copied to the vibration motor
 # on the sensor's m1, so you can feel the flyer working. Settings from
 # Vibrate_to_Acceleration/vibe_to_acceleration.py.
@@ -46,21 +53,37 @@ VIBRATE = True
 #   hover            ->  halfway
 #   hover + M1_SPAN  ->  MAX_VIBE_POWER
 # Smaller M1_SPAN = small motor changes feel bigger.
-MIN_VIBE_POWER = 1000 # Weakest vibration you can still feel. Used as soon as the flyer's m1 is running.
+MIN_VIBE_POWER = 0 # Weakest vibration you can still feel. Used as soon as the flyer's m1 is running.
 MAX_VIBE_POWER = 40000  # Strongest vibration. Advised no higher than 50000.
 M1_SPAN = 5000          # Flyer m1 change (either side of hover) that covers the whole vibration range
 M1_MEASURE_TIME = 1.0   # How long the flyer hovers to measure its hover m1, before the laps [s]
 VIBE_PERIOD = 0.1      # How often the vibration is updated [s]
 
+# Damping: the distance between the sensor and the flyer is measured every
+# VIBE_PERIOD, and the spread (standard deviation) of the last
+# SPREAD_WINDOW seconds is worked out. Holding the sensor at a steady
+# distance from the flyer (e.g. tracing the circle with it) = low spread,
+# so the vibration is left alone. Erratic distance = high spread, so the
+# vibration fades out:
+#   spread <= STEADY_SPREAD           ->  full vibration
+#   spread >= WILD_SPREAD             ->  off
+#   in between                        ->  faded in a straight line
+DAMPING = True
+SPREAD_WINDOW = 2.0   # How many seconds of distances the spread is worked out over [s]
+STEADY_SPREAD = 0.025  # [m]
+WILD_SPREAD = 0.15    # [m]
+
 LAND_DURATION = 2.0     # Time the flyer takes to land [s]
 POSITION_TIMEOUT = 3  # Land if a drone sends nothing for this long [s]
 
 # Latest data from each drone, filled in by the log callback below
-positions = {uri: None for uri in uris}  # Flyer: (x, y, z) [m]
+positions = {uri: None for uri in uris}  # Both: (x, y, z) [m]
 flyer_m1 = [0]                           # Flyer: motor 1 power, 0 to 65535
 m1_hover = [None]                        # Flyer's m1 at hover, measured before the laps
 attitudes = {uri: None for uri in uris}  # Sensor: (roll, pitch, yaw) [deg]
 last_update = {uri: 0.0 for uri in uris}
+spread = [0.0]   # Latest spread of the sensor-flyer distance [m], for printing
+damping = [1.0]  # Latest damping factor, 1 = full vibration, 0 = off, for printing
 
 # Set by Ctrl+C so the flyer lands instead of the script dying mid-air
 stop_event = threading.Event()
@@ -91,10 +114,10 @@ def arm(scf):
 # Runs every time a drone sends its data (every 10 ms).
 # Saves the numbers and notes the time, so we can tell if a drone goes quiet.
 def log_callback(uri, data):
+    positions[uri] = (data['stateEstimate.x'],
+                      data['stateEstimate.y'],
+                      data['stateEstimate.z'])
     if uri == Flyer:
-        positions[uri] = (data['stateEstimate.x'],
-                          data['stateEstimate.y'],
-                          data['stateEstimate.z'])
         flyer_m1[0] = data['motor.m1']
     else:
         attitudes[uri] = (data['stateEstimate.roll'],
@@ -103,14 +126,14 @@ def log_callback(uri, data):
     last_update[uri] = time.time()
 
 
-# Asks a drone to send its data every 10 ms: position and motor 1 power
-# for the flyer, tilt and heading for the sensor
+# Asks a drone to send its data every 10 ms: position for both, plus
+# motor 1 power for the flyer, and tilt and heading for the sensor
 def start_logging(scf):
     log_conf = LogConfig(name='State', period_in_ms=10)
+    log_conf.add_variable('stateEstimate.x', 'float')
+    log_conf.add_variable('stateEstimate.y', 'float')
+    log_conf.add_variable('stateEstimate.z', 'float')
     if scf.cf.link_uri == Flyer:
-        log_conf.add_variable('stateEstimate.x', 'float')
-        log_conf.add_variable('stateEstimate.y', 'float')
-        log_conf.add_variable('stateEstimate.z', 'float')
         log_conf.add_variable('motor.m1', 'uint16_t')
     else:
         log_conf.add_variable('stateEstimate.roll', 'float')
@@ -138,6 +161,11 @@ def dropped_drone():
         if now - last_update[uri] > POSITION_TIMEOUT:
             return uri
     return None
+
+
+# Moves a point to the nearest spot inside the bounding box
+def in_box(x, y):
+    return min(max(x, X_MIN), X_MAX), min(max(y, Y_MIN), Y_MAX)
 
 
 # Treats small tilts as zero, so a slightly tilted hand doesn't slide the circle
@@ -195,13 +223,14 @@ def fly_circle(cf, start_centre):
             centre[i] += v * dt
             centre[i] = min(max(centre[i], start_centre[i] - MAX_SHIFT), start_centre[i] + MAX_SHIFT)
 
-        # How far round the circle we should be by now
+        # How far round the circle we should be by now, capped at the box edges
         angle = direction * 2 * math.pi * elapsed / LAP_TIME
-        x = centre[0] + RADIUS * math.cos(angle)
-        y = centre[1] + RADIUS * math.sin(angle)
+        x, y = in_box(centre[0] + RADIUS * math.cos(angle),
+                      centre[1] + RADIUS * math.sin(angle))
 
         cf.commander.send_position_setpoint(x, y, HEIGHT, 0)
-        print(f'lap {int(elapsed // LAP_TIME) + 1}/{REPS}  centre: ({centre[0]:5.2f}, {centre[1]:5.2f})', end='\r')
+        print(f'lap {int(elapsed // LAP_TIME) + 1}/{REPS}  centre: ({centre[0]:5.2f}, {centre[1]:5.2f})'
+              f'  spread: {spread[0]:.2f} m  vibration: {damping[0] * 100:3.0f}%', end='\r')
         time.sleep(0.01)
 
     return None
@@ -230,6 +259,29 @@ def vibe_power():
     return int(MIN_VIBE_POWER + fraction * (MAX_VIBE_POWER - MIN_VIBE_POWER))
 
 
+def sensor_flyer_distance():
+    a = positions[Sensor]
+    b = positions[Flyer]
+    return math.sqrt(pow(a[0]-b[0], 2) + pow(a[1]-b[1], 2) + pow(a[2]-b[2], 2))
+
+
+def damping_factor(distances):
+    '''
+    1 (leave the vibration alone) to 0 (off), from how much the
+    sensor-flyer distance has varied recently. See STEADY_SPREAD.
+    '''
+    if len(distances) < 2:
+        return 1.0
+
+    # Standard deviation: the typical distance from the average distance
+    mean = sum(distances) / len(distances)
+    spread[0] = math.sqrt(sum(pow(d - mean, 2) for d in distances) / len(distances))
+
+    # Where the spread sits between steady and wild: 1 when steady, 0 when wild
+    factor = (WILD_SPREAD - spread[0]) / (WILD_SPREAD - STEADY_SPREAD)
+    return min(max(factor, 0), 1)
+
+
 def measure_hover_m1():
     '''Averages the flyer's m1 over M1_MEASURE_TIME while it hovers.'''
     samples = []
@@ -250,8 +302,16 @@ def vibrate(cf):
     cf.param.set_value('motorPowerSet.enable', '1')
     time.sleep(1)
 
+    # Running sample: the last SPREAD_WINDOW seconds of distances, oldest dropped automatically
+    distances = deque(maxlen=max(2, int(SPREAD_WINDOW / VIBE_PERIOD)))
+
     while not flight_done.is_set():
-        cf.param.set_value('motorPowerSet.m1', str(vibe_power()))
+        power = vibe_power()
+        if DAMPING and positions[Flyer] is not None and positions[Sensor] is not None:
+            distances.append(sensor_flyer_distance())
+            damping[0] = damping_factor(distances)
+            power = int(power * damping[0])
+        cf.param.set_value('motorPowerSet.m1', str(power))
         time.sleep(VIBE_PERIOD)
 
     # Turn off all motors
