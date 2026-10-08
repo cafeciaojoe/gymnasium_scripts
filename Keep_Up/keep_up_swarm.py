@@ -7,8 +7,9 @@ from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils.multiranger import Multiranger
 
 URIS = {
-    'radio://0/80/2M/E7E7E7E7E7',
-    'radio://0/80/2M/E7E7E7E7E8',
+    'radio://0/40/2M/BADF00D006',
+    'radio://0/40/2M/BADF00D007',
+    'radio://0/40/2M/BADF00D008'
 }
 def is_close(range, min_dist):
     if range is None:
@@ -42,7 +43,7 @@ def keep_up(scf):
                         else:
                             vel_z = 2*def_vel
                     else:
-                        vel_z = -2*def_vel
+                        vel_z = -0.5*def_vel
                         sound = 13
                     
                     if is_close(multiranger.front, 0.3):

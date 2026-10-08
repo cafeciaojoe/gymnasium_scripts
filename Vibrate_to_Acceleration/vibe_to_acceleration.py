@@ -33,17 +33,17 @@ samples = 4
 
 # Connection URI for the Crazyflie
 uris = [
-'radio://0/30/2M/a0a0a0a0aa',
-'radio://0/30/2M/a0a0a0a0ae',
-'radio://0/30/2M/e7e7e7e7e7',
-'radio://0/30/2M/e7e7e7e7e8'
+'radio://0/80/2M/BADCAFE000',
+'radio://0/80/2M/BADCAFE001',
+'radio://0/80/2M/BADCAFE002',
+'radio://0/80/2M/BADCAFE003'
 ]
 
 # Global dictionary to store 3d acceleration data for each Crazyflie
 acc_3d_dict = {}
 
 # TODO FIND LOG PERIOD THAT SUITS THE BANDWIDTH, 4 DRONES 
-log_period = 40 #ms
+log_period = 20 #ms
 
 global execute
 execute = True

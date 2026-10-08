@@ -11,8 +11,8 @@ from cflib.positioning.motion_commander import MotionCommander
 
 # Change uris according to your setup
 # URIs in a swarm using the same radio must also be on the same channel
-Follower = 'radio://0/80/2M/E7E7E7E7E7'  # Follower
-Leader = 'radio://0/80/2M/E7E7E7E7E8'  # Leader
+Follower = 'radio://0/40/2M/BADF00D005'  # Follower
+Leader = 'radio://0/40/2M/BADF00D004'  # Leader
 
 r_min = 0.75  # The minimum distance between the 2 drones
 r_max = 1.25  # The maximum distance between the 2 drones

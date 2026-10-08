@@ -11,8 +11,8 @@ from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 
-SENSOR1 = uri_helper.uri_from_env(default='radio://0/80/2M/BADCAFE002')
-SENSOR2 = uri_helper.uri_from_env(default='radio://0/80/2M/BADCAFE003')
+SENSOR1 = uri_helper.uri_from_env(default='radio://0/80/2M/BADCAFE001')
+SENSOR2 = uri_helper.uri_from_env(default='radio://0/80/2M/BADCAFE002')
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/BADCAFE007')
 
 SENSORS = {

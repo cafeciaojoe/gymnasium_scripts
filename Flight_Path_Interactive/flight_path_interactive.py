@@ -17,8 +17,8 @@ from cflib.utils import uri_helper
 
 from cflib.positioning.motion_commander import MotionCommander
 
-Uri_sensor = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
-Uri_drone = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E8')
+Uri_sensor = uri_helper.uri_from_env(default='radio://0/40/2M/BADF00D004')
+Uri_drone = uri_helper.uri_from_env(default='radio://0/40/2M/BADF00D007')
 
 points = 5
 x = []

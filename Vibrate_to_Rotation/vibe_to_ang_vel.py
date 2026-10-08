@@ -26,7 +26,7 @@ printing = False
 max_angular_velocity_dps = 400  # (degrees per second)
 
 # Smoothing, more samples, smoother and more laggy response
-samples = 4
+samples = 40
 
 # Response curve, 1 = linear response.
 vibration_exponent = 1 
@@ -35,10 +35,10 @@ vibration_exponent = 1
 
 # Connection URI for the Crazyflie
 uris = [
-'radio://0/30/2M/a0a0a0a0aa',
-'radio://0/30/2M/a0a0a0a0ae',
-'radio://0/30/2M/e7e7e7e7e7',
-'radio://0/30/2M/e7e7e7e7e8'
+'radio://0/80/2M/BADCAFE000',
+'radio://0/80/2M/BADCAFE001',
+'radio://0/80/2M/BADCAFE002',
+'radio://0/80/2M/BADCAFE003'
 ]
 
 # Global dictionary to store quaternion data for each Crazyflie

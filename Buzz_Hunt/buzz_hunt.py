@@ -12,7 +12,7 @@ from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
-URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
+URI = uri_helper.uri_from_env(default='radio://0/40/2M/BADF00D009')
 
 # Crazyflie's position
 x1 = [0]
@@ -23,9 +23,9 @@ radius = 5  # Vibrations start when d <= radius
 min_power = 1000  # Minimum motor power
 max_power = 50000  # Maximum motor power
 CURVE_TYPE = 2  # 1 for Linear and 2 for Exponential
-Space_limits_x = (-0.5, 0.5)
-Space_limits_y = (-0.5, 0.5)
-Space_limits_z = (0.2, 1.8)
+Space_limits_x = (-1.5, 1.5)
+Space_limits_y = (-1.5, 1.5)
+Space_limits_z = (0.1, 1.5)
 
 Stop = False
 

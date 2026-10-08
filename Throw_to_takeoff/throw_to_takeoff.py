@@ -10,7 +10,7 @@ from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
-Uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
+Uri = uri_helper.uri_from_env(default='radio://0/40/2M/BADF00D009')
 
 vel_z = []
 acc_z = []

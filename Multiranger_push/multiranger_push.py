@@ -7,7 +7,7 @@ from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 from cflib.utils.multiranger import Multiranger
 
-URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
+URI = uri_helper.uri_from_env(default='radio://0/40/2M/BADF00D006')  # Change to your Crazyflie's URI
 
 DEFAULT_HEIGHT = 0.5
 

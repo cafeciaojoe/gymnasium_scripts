@@ -27,9 +27,9 @@ def stop_motors(scf):
     scf.cf.param.set_value('motorPowerSet.enable', '0')
     time.sleep(1)
     scf.cf.param.set_value('motorPowerSet.m1', '0')
-    #scf.cf.param.set_value('motorPowerSet.m2', '0')
-    #scf.cf.param.set_value('motorPowerSet.m3', '0')
-    #scf.cf.param.set_value('motorPowerSet.m4', '0')
+    scf.cf.param.set_value('motorPowerSet.m2', '0')
+    scf.cf.param.set_value('motorPowerSet.m3', '0')
+    scf.cf.param.set_value('motorPowerSet.m4', '0')
     print(f"Motors stopped for {scf._link_uri}")
 
 if __name__ == '__main__':
