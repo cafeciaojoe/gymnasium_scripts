@@ -1,4 +1,3 @@
-import math
 import signal
 import threading
 import time
@@ -11,26 +10,38 @@ from cflib.utils import uri_helper
 
 URI = uri_helper.uri_from_env(default='radio://0/40/2M/BADF00D007')  # Change to your Crazyflie's URI
 
-# The drone switches between two modes:
-#   HOLD:   its target is pinned to one spot, so it pulls back there when bumped.
-#   FOLLOW: its target is pinned to wherever the drone is right now, so it
-#           doesn't pull anywhere and you can carry it to a new spot.
-# A push further than PUSH_DISTANCE switches HOLD -> FOLLOW. Holding it
-# still for STILL_TIME switches FOLLOW -> HOLD at the new spot.
+# The drone takes off, measures the thrust it needs to hover, then just
+# stays level at that thrust. Nothing holds it in place sideways, so a
+# push moves it and it stays wherever it drifts to.
+# The Lighthouse is still needed for take off and landing.
 
 # ---- Inputs ----
 TAKEOFF_HEIGHT = 0.5  # [m]
-PUSH_DISTANCE = 0.15  # How far it must be pushed from its spot to let go [m]
-STILL_SPEED = 0.05    # Below this speed the drone counts as still [m/s]
-STILL_TIME = 0.5      # How long it must be still to lock the new spot [s]
-Z_MIN = 0.2           # Never hold or follow lower than this [m]
+SETTLE_TIME = 3.0     # Wait after take off before measuring hover thrust [s]
+MEASURE_TIME = 2.0    # How long hover thrust is averaged over [s]. Longer = steadier value.
+
+# True: the Lighthouse trims the thrust to hold TAKEOFF_HEIGHT, so the
+#       drone doesn't climb or sink as the battery drains. Sideways it
+#       is still free.
+# False: pure hover thrust, nothing holds the height either.
+HOLD_HEIGHT = True
+K_Z = 10000   # Thrust added per metre below the hold height
+K_VZ = 5000   # Thrust removed per m/s of climb (stops it bouncing)
+MAX_TRIM = 8000  # Maximum thrust the height hold can add or remove
+
+# True: you can twist the drone to a new heading and it stays there.
+# False: it twists back to the heading it took off with.
+FREE_YAW = False
+MAX_YAW_RATE = 200  # Fastest spin it will follow [deg/s]
 
 LAND_DURATION = 2.0     # Time the drone takes to land [s]
 POSITION_TIMEOUT = 0.5  # Land if no position arrives for this long [s]
 
-position = [None]  # (x, y, z)
-velocity = [None]  # (vx, vy, vz)
+height = [None]
+climb_rate = [0.0]
+yaw_rate = [0.0]
 last_update = [0.0]
+drone_thrust = [0]
 
 # Set by Ctrl+C so the drone lands instead of the script dying mid-air
 stop_event = threading.Event()
@@ -44,42 +55,56 @@ def handle_ctrl_c(_signum, _frame):
 # Runs every time the drone sends its data (every 10 ms).
 # Saves the numbers and notes the time, so we can tell if tracking drops out.
 def state_callback(_timestamp, data, _logconf):
-    position[0] = (data['stateEstimate.x'],
-                   data['stateEstimate.y'],
-                   data['stateEstimate.z'])
-    velocity[0] = (data['stateEstimate.vx'],
-                   data['stateEstimate.vy'],
-                   data['stateEstimate.vz'])
+    height[0] = data['stateEstimate.z']
+    climb_rate[0] = data['stateEstimate.vz']
+    yaw_rate[0] = data['gyro.z']
     last_update[0] = time.time()
 
 
-# Asks the drone to send its position and speed every 10 ms
-def start_state_logging(cf):
-    log_conf = LogConfig(name='State', period_in_ms=10)
-    log_conf.add_variable('stateEstimate.x', 'float')
-    log_conf.add_variable('stateEstimate.y', 'float')
-    log_conf.add_variable('stateEstimate.z', 'float')
-    log_conf.add_variable('stateEstimate.vx', 'float')
-    log_conf.add_variable('stateEstimate.vy', 'float')
-    log_conf.add_variable('stateEstimate.vz', 'float')
-    cf.log.add_config(log_conf)
-    log_conf.data_received_cb.add_callback(state_callback)
-    log_conf.start()
+# Saves every thrust reading, so we can average them while hovering
+def thrust_callback(_timestamp, data, _logconf):
+    drone_thrust.append(data['stabilizer.thrust'])
 
 
-# Straight-line distance between two points (Pythagoras in 3D)
-def distance(a, b):
-    return math.sqrt(pow(a[0]-b[0], 2) + pow(a[1]-b[1], 2) + pow(a[2]-b[2], 2))
+# Asks the drone to send its height, climb speed, spin rate and thrust every 10 ms
+def start_logging(cf):
+    log_conf1 = LogConfig(name='State', period_in_ms=10)
+    log_conf1.add_variable('stateEstimate.z', 'float')
+    log_conf1.add_variable('stateEstimate.vz', 'float')
+    log_conf1.add_variable('gyro.z', 'float')
+    cf.log.add_config(log_conf1)
+    log_conf1.data_received_cb.add_callback(state_callback)
+    log_conf1.start()
+
+    log_conf2 = LogConfig(name='Thrust', period_in_ms=10)
+    log_conf2.add_variable('stabilizer.thrust', 'float')
+    cf.log.add_config(log_conf2)
+    log_conf2.data_received_cb.add_callback(thrust_callback)
+    log_conf2.start()
 
 
-# How fast the drone is moving, in any direction
-def speed(v):
-    return math.sqrt(pow(v[0], 2) + pow(v[1], 2) + pow(v[2], 2))
+def take_off_and_measure_hover(cf):
+    '''
+    Takes off with the high level commander, hovers, and returns the
+    average thrust the drone needed to hold its height.
+    '''
+    cf.high_level_commander.takeoff(TAKEOFF_HEIGHT, 2.0)
+    time.sleep(SETTLE_TIME)  # Take off and settle
+
+    # Average all thrust readings that arrive in the next MEASURE_TIME
+    start = len(drone_thrust)
+    time.sleep(MEASURE_TIME)
+    samples = drone_thrust[start:]
+    hover_thrust = sum(samples) / len(samples)
+    print(f'Hover thrust: {hover_thrust:.0f}')
+    return hover_thrust
 
 
-# Same point, but never lower than Z_MIN
-def above_floor(p):
-    return (p[0], p[1], max(p[2], Z_MIN))
+def height_trim():
+    '''Extra thrust that nudges the drone back to TAKEOFF_HEIGHT.'''
+    # Too low -> more thrust. Climbing -> less thrust, so it doesn't overshoot and bounce.
+    trim = K_Z * (TAKEOFF_HEIGHT - height[0]) - K_VZ * climb_rate[0]
+    return min(max(trim, -MAX_TRIM), MAX_TRIM)
 
 
 def land(cf):
@@ -94,49 +119,43 @@ def land(cf):
 def pick_and_place(cf):
     # Don't start until the drone has sent at least one position
     print('Waiting for position data...')
-    while position[0] is None:
+    while height[0] is None:
         if stop_event.is_set():
             return
         time.sleep(0.1)
 
-    # Take off with the built-in auto-pilot and let it settle
-    cf.high_level_commander.takeoff(TAKEOFF_HEIGHT, 2.0)
-    time.sleep(3.0)
+    # A zero setpoint unlocks the thrust for later. Then hand control to
+    # the high level commander for take off.
+    cf.commander.send_setpoint(0, 0, 0, 0)
+    cf.commander.send_notify_setpoint_stop()
 
-    # Start in HOLD, pinned to where it is now
-    target = above_floor(position[0])
-    mode = 'HOLD'
-    still_since = None
+    hover_thrust = take_off_and_measure_hover(cf)
+    if stop_event.is_set():
+        land(cf)
+        return
+
+    print('Hovering on power, push me around')
 
     # Fly until Ctrl+C or the position tracking drops out
     while not stop_event.is_set():
-        if time.time() - last_update[0] > POSITION_TIMEOUT:
-            print('\nLost position, landing...')
-            break
+        thrust = hover_thrust  # Start from the measured hover thrust
+        if HOLD_HEIGHT:
+            if time.time() - last_update[0] > POSITION_TIMEOUT:
+                print('\nLost position, landing...')
+                break
+            thrust += height_trim()
 
-        pos = position[0]
+        # Asking for the spin it already has means its target heading
+        # turns with it, so it doesn't twist back. Minus because the
+        # firmware flips the yaw rate sent with send_setpoint.
+        yaw = 0
+        if FREE_YAW:
+            yaw = -min(max(yaw_rate[0], -MAX_YAW_RATE), MAX_YAW_RATE)
 
-        if mode == 'HOLD':
-            # Target stays put. Pushed far enough? Let go.
-            if distance(pos, target) > PUSH_DISTANCE:
-                mode = 'FOLLOW'
-                still_since = None
-
-        else:  # FOLLOW
-            # Target moves with the drone, so it doesn't pull anywhere
-            target = above_floor(pos)
-            # Count how long it has been still. Still long enough? Pin it here.
-            if speed(velocity[0]) < STILL_SPEED:
-                if still_since is None:
-                    still_since = time.time()
-                elif time.time() - still_since > STILL_TIME:
-                    mode = 'HOLD'
-            else:
-                still_since = None
-
-        # Fly to the target, facing yaw 0
-        cf.commander.send_position_setpoint(target[0], target[1], target[2], 0)
-        print(f'{mode:6}  target: ({target[0]:5.2f}, {target[1]:5.2f}, {target[2]:5.2f})', end='\r')
+        # Stay level (roll 0, pitch 0), nothing about where to be sideways,
+        # so a push moves it freely
+        cf.commander.send_setpoint(0, 0, yaw, int(min(max(thrust, 0), 65535)))
+        print(f'thrust: {int(thrust):5d}  height: {height[0]:.2f} m', end='\r')
         time.sleep(0.01)
 
     print()
@@ -152,7 +171,7 @@ if __name__ == '__main__':
         cf.platform.send_arming_request(True)  # Allow the motors to spin
         time.sleep(1.0)
 
-        start_state_logging(cf)
+        start_logging(cf)
         time.sleep(0.5)
 
         # From here on Ctrl+C lands the drone instead of killing the script
