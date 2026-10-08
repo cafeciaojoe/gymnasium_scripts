@@ -13,7 +13,7 @@ from cflib.positioning.motion_commander import MotionCommander
 # URIs in a swarm using the same radio must also be on the same channel
 Sensor_A = 'radio://0/40/2M/BADF00D009'  # Hand-held sensor drone (does not fly)
 Sensor_B = 'radio://0/40/2M/BADF00D004'  # Hand-held sensor drone (does not fly)
-Flyer = 'radio://0/40/2M/BADF00D009'     # The drone whose height is controlled
+Flyer = 'radio://0/40/2M/BADF00D007'     # The drone whose height is controlled
 
 # List of URIs
 uris = {
@@ -23,10 +23,10 @@ uris = {
 }
 
 # ---- Inputs ----
-H_MIN = 0.3   # Flyer height [m] when the sensors are at (or closer than) D_MIN
+H_MIN = 0.2   # Flyer height [m] when the sensors are at (or closer than) D_MIN
 H_MAX = 1.5   # Flyer height [m] when the sensors are at (or further than) D_MAX
-D_MIN = 0.2   # Minimum distance between the sensor drones [m]
-D_MAX = 1.5   # Maximum distance between the sensor drones [m]
+D_MIN = 0.1   # Minimum distance between the sensor drones [m]
+D_MAX = 1.0   # Maximum distance between the sensor drones [m]
 
 FLIGHT_TIME = 60    # How long the flyer stays up [s]
 K_P = 1.5           # Gain from height error to vertical velocity
